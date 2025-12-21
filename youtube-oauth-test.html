@@ -277,6 +277,9 @@
                 <button id="analyzeButton" class="btn" onclick="analyzeTaste()" style="display: none; background: #7C3AED;">
                     🤖 Analyze My Taste with Claude
                 </button>
+                <button id="exportButton" class="btn" onclick="exportToMarkdown()" style="display: none; background: #FF6B6B;">
+                    📥 Export to Markdown
+                </button>
             </div>
 
             <!-- Analysis Section -->
@@ -495,9 +498,10 @@
                 showLoading(false);
                 showStatus(`All data fetched successfully! Total: ${subscriptionItems.length} subscriptions`, 'success');
 
-                // Show analyze button if data is available
+                // Show analyze and export buttons if data is available
                 if (currentData && currentData.subscriptions && currentData.subscriptions.items.length > 0) {
                     document.getElementById('analyzeButton').style.display = 'inline-block';
+                    document.getElementById('exportButton').style.display = 'inline-block';
                 }
             } catch (error) {
                 console.error('Error fetching data:', error);
@@ -646,6 +650,51 @@ ${subscriptions}
         function openClaudeAI() {
             window.open('https://claude.ai/new', '_blank');
             showStatus('🚀 Claude.ai를 새 탭에서 열었습니다!', 'info');
+        }
+
+        function exportToMarkdown() {
+            if (!currentData || !currentData.subscriptions) {
+                showStatus('Please fetch YouTube data first!', 'error');
+                return;
+            }
+
+            // Generate markdown content
+            const subscriptions = currentData.subscriptions.items;
+            let markdown = `# YouTube 구독 채널 목록\n\n`;
+            markdown += `**총 구독 채널 수:** ${subscriptions.length}개\n\n`;
+            markdown += `**생성 날짜:** ${new Date().toLocaleString('ko-KR')}\n\n`;
+            markdown += `---\n\n`;
+
+            subscriptions.forEach((sub, index) => {
+                markdown += `## ${index + 1}. ${sub.snippet.title}\n\n`;
+                if (sub.snippet.description) {
+                    markdown += `**설명:**\n${sub.snippet.description}\n\n`;
+                } else {
+                    markdown += `**설명:** 설명 없음\n\n`;
+                }
+                markdown += `---\n\n`;
+            });
+
+            // Create blob and download link
+            const blob = new Blob([markdown], { type: 'text/markdown;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const timestamp = new Date().toISOString().slice(0, 10);
+            const filename = `youtube-subscriptions-${timestamp}.md`;
+
+            // Create temporary download link
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+
+            // Cleanup
+            setTimeout(() => {
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            }, 100);
+
+            showStatus(`✅ 마크다운 파일 다운로드 시작: ${filename}`, 'success');
         }
 
         // Initialize on page load
