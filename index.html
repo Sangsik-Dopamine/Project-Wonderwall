@@ -413,58 +413,102 @@
             document.getElementById('loadingIndicator').style.display = show ? 'block' : 'none';
         }
 
+        // Helper function to fetch all pages of data
+        async function fetchAllPages(apiCall, params) {
+            let allItems = [];
+            let nextPageToken = null;
+
+            do {
+                const requestParams = { ...params };
+                if (nextPageToken) {
+                    requestParams.pageToken = nextPageToken;
+                }
+
+                const response = await apiCall(requestParams);
+
+                if (response.result.items) {
+                    allItems = allItems.concat(response.result.items);
+                }
+
+                nextPageToken = response.result.nextPageToken;
+            } while (nextPageToken);
+
+            return allItems;
+        }
+
         async function fetchAllData() {
             showLoading(true);
             document.getElementById('dataDisplay').innerHTML = '';
+
+            const statusDiv = document.getElementById('statusMessage');
+            statusDiv.className = 'status info';
+            statusDiv.innerHTML = 'Fetching data... This may take a moment for large collections.';
 
             try {
                 const allData = {};
 
                 // Fetch Channel Information
+                statusDiv.innerHTML = 'Fetching channel information...';
                 const channelResponse = await gapi.client.youtube.channels.list({
                     part: 'snippet,contentDetails,statistics,brandingSettings,status,topicDetails',
                     mine: true
                 });
                 allData.channel = channelResponse.result;
 
-                // Fetch Playlists
-                const playlistsResponse = await gapi.client.youtube.playlists.list({
-                    part: 'snippet,contentDetails,status',
-                    mine: true,
-                    maxResults: 50
-                });
-                allData.playlists = playlistsResponse.result;
-
-                // Fetch Subscriptions
-                const subscriptionsResponse = await gapi.client.youtube.subscriptions.list({
-                    part: 'snippet,contentDetails,subscriberSnippet',
-                    mine: true,
-                    maxResults: 50
-                });
-                allData.subscriptions = subscriptionsResponse.result;
-
-                // Fetch Uploaded Videos
-                if (allData.channel.items && allData.channel.items.length > 0) {
-                    const uploadsPlaylistId = allData.channel.items[0].contentDetails.relatedPlaylists.uploads;
-                    const videosResponse = await gapi.client.youtube.playlistItems.list({
+                // Fetch ALL Playlists (with pagination)
+                statusDiv.innerHTML = 'Fetching all playlists...';
+                const playlistItems = await fetchAllPages(
+                    (params) => gapi.client.youtube.playlists.list(params),
+                    {
                         part: 'snippet,contentDetails,status',
-                        playlistId: uploadsPlaylistId,
+                        mine: true,
                         maxResults: 50
-                    });
-                    allData.videos = videosResponse.result;
+                    }
+                );
+                allData.playlists = { items: playlistItems, totalItems: playlistItems.length };
+
+                // Fetch ALL Subscriptions (with pagination)
+                statusDiv.innerHTML = 'Fetching all subscriptions...';
+                const subscriptionItems = await fetchAllPages(
+                    (params) => gapi.client.youtube.subscriptions.list(params),
+                    {
+                        part: 'snippet,contentDetails,subscriberSnippet',
+                        mine: true,
+                        maxResults: 50
+                    }
+                );
+                allData.subscriptions = { items: subscriptionItems, totalItems: subscriptionItems.length };
+
+                // Fetch ALL Uploaded Videos (with pagination)
+                if (allData.channel.items && allData.channel.items.length > 0) {
+                    statusDiv.innerHTML = 'Fetching all uploaded videos...';
+                    const uploadsPlaylistId = allData.channel.items[0].contentDetails.relatedPlaylists.uploads;
+                    const videoItems = await fetchAllPages(
+                        (params) => gapi.client.youtube.playlistItems.list(params),
+                        {
+                            part: 'snippet,contentDetails,status',
+                            playlistId: uploadsPlaylistId,
+                            maxResults: 50
+                        }
+                    );
+                    allData.videos = { items: videoItems, totalItems: videoItems.length };
                 }
 
-                // Fetch Activities
-                const activitiesResponse = await gapi.client.youtube.activities.list({
-                    part: 'snippet,contentDetails',
-                    mine: true,
-                    maxResults: 50
-                });
-                allData.activities = activitiesResponse.result;
+                // Fetch ALL Activities (with pagination)
+                statusDiv.innerHTML = 'Fetching all activities...';
+                const activityItems = await fetchAllPages(
+                    (params) => gapi.client.youtube.activities.list(params),
+                    {
+                        part: 'snippet,contentDetails',
+                        mine: true,
+                        maxResults: 50
+                    }
+                );
+                allData.activities = { items: activityItems, totalItems: activityItems.length };
 
                 displayData(allData);
                 showLoading(false);
-                showStatus('All data fetched successfully!', 'success');
+                showStatus(`All data fetched successfully! Total: ${subscriptionItems.length} subscriptions, ${playlistItems.length} playlists, ${activityItems.length} activities`, 'success');
             } catch (error) {
                 console.error('Error fetching data:', error);
                 showLoading(false);
