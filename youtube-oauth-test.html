@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YouTube OAuth Test Page</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: #FF0000;
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            opacity: 0.9;
+            font-size: 1.1em;
+        }
+
+        .content {
+            padding: 40px;
+        }
+
+        .auth-section {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .btn {
+            background: #FF0000;
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            font-size: 16px;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(255,0,0,0.3);
+            font-weight: bold;
+            margin: 10px;
+        }
+
+        .btn:hover {
+            background: #CC0000;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(255,0,0,0.4);
+        }
+
+        .btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-secondary {
+            background: #4CAF50;
+        }
+
+        .btn-secondary:hover {
+            background: #45a049;
+        }
+
+        .status {
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            font-weight: bold;
+        }
+
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .status.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+
+        .data-section {
+            margin-top: 30px;
+        }
+
+        .data-category {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-left: 4px solid #FF0000;
+        }
+
+        .data-category h3 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 1.3em;
+        }
+
+        .data-item {
+            background: white;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 8px;
+            border: 1px solid #e0e0e0;
+        }
+
+        .data-item h4 {
+            color: #FF0000;
+            margin-bottom: 8px;
+        }
+
+        .data-item p {
+            color: #666;
+            line-height: 1.6;
+        }
+
+        .thumbnail {
+            max-width: 200px;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #FF0000;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .config-section {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .config-section h3 {
+            color: #856404;
+            margin-bottom: 15px;
+        }
+
+        .config-input {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+
+        .config-label {
+            display: block;
+            font-weight: bold;
+            margin-top: 10px;
+            color: #333;
+        }
+
+        pre {
+            background: #f5f5f5;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+            font-size: 12px;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .stat-card h4 {
+            font-size: 2em;
+            margin-bottom: 5px;
+        }
+
+        .stat-card p {
+            opacity: 0.9;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎥 YouTube OAuth Test Page</h1>
+            <p>Retrieve and display all available data from your YouTube account</p>
+        </div>
+
+        <div class="content">
+            <!-- Configuration Section -->
+            <div class="config-section" id="configSection">
+                <h3>⚙️ API Configuration</h3>
+                <p>Enter your Google API credentials (you can get these from <a href="https://console.cloud.google.com/apis/credentials" target="_blank">Google Cloud Console</a>)</p>
+
+                <label class="config-label">Client ID:</label>
+                <input type="text" id="clientId" class="config-input" placeholder="Your Google OAuth Client ID">
+
+                <label class="config-label">API Key:</label>
+                <input type="text" id="apiKey" class="config-input" placeholder="Your Google API Key">
+
+                <button class="btn btn-secondary" onclick="saveConfig()">Save Configuration</button>
+            </div>
+
+            <!-- Authentication Section -->
+            <div class="auth-section">
+                <div id="statusMessage"></div>
+                <button id="authButton" class="btn" onclick="handleAuthClick()">
+                    Sign In with Google
+                </button>
+                <button id="signoutButton" class="btn btn-secondary" onclick="handleSignoutClick()" style="display: none;">
+                    Sign Out
+                </button>
+                <button id="fetchButton" class="btn" onclick="fetchAllData()" style="display: none;">
+                    Fetch YouTube Data
+                </button>
+            </div>
+
+            <!-- Loading Indicator -->
+            <div id="loadingIndicator" class="loading" style="display: none;">
+                <div class="spinner"></div>
+                <p>Loading data...</p>
+            </div>
+
+            <!-- Data Display Section -->
+            <div id="dataDisplay" class="data-section"></div>
+        </div>
+    </div>
+
+    <!-- Google API Client Library -->
+    <script src="https://apis.google.com/js/api.js"></script>
+    <script src="https://accounts.google.com/gsi/client"></script>
+
+    <script>
+        // Configuration
+        let CLIENT_ID = '';
+        let API_KEY = '';
+        const DISCOVERY_DOC = 'https://www.googleapis.com/discovery/v1/apis/youtube/v3/rest';
+        const SCOPES = 'https://www.googleapis.com/auth/youtube.readonly https://www.googleapis.com/auth/youtube.force-ssl https://www.googleapis.com/auth/youtubepartner';
+
+        let tokenClient;
+        let gapiInited = false;
+        let gisInited = false;
+        let accessToken = null;
+
+        // Load configuration from localStorage
+        function loadConfig() {
+            const savedClientId = localStorage.getItem('youtube_client_id');
+            const savedApiKey = localStorage.getItem('youtube_api_key');
+
+            if (savedClientId && savedApiKey) {
+                CLIENT_ID = savedClientId;
+                API_KEY = savedApiKey;
+                document.getElementById('clientId').value = savedClientId;
+                document.getElementById('apiKey').value = savedApiKey;
+                document.getElementById('configSection').style.display = 'none';
+                initializeGoogleAPI();
+            }
+        }
+
+        // Save configuration
+        function saveConfig() {
+            const clientId = document.getElementById('clientId').value.trim();
+            const apiKey = document.getElementById('apiKey').value.trim();
+
+            if (!clientId || !apiKey) {
+                showStatus('Please enter both Client ID and API Key', 'error');
+                return;
+            }
+
+            CLIENT_ID = clientId;
+            API_KEY = apiKey;
+            localStorage.setItem('youtube_client_id', clientId);
+            localStorage.setItem('youtube_api_key', apiKey);
+
+            document.getElementById('configSection').style.display = 'none';
+            showStatus('Configuration saved! Initializing API...', 'success');
+            initializeGoogleAPI();
+        }
+
+        // Initialize Google API
+        function initializeGoogleAPI() {
+            if (!CLIENT_ID || !API_KEY) {
+                return;
+            }
+            gapi.load('client', initializeGapiClient);
+            google.accounts.id.initialize({
+                client_id: CLIENT_ID,
+            });
+            tokenClient = google.accounts.oauth2.initTokenClient({
+                client_id: CLIENT_ID,
+                scope: SCOPES,
+                callback: '', // defined later
+            });
+            gisInited = true;
+            maybeEnableButtons();
+        }
+
+        async function initializeGapiClient() {
+            await gapi.client.init({
+                apiKey: API_KEY,
+                discoveryDocs: [DISCOVERY_DOC],
+            });
+            gapiInited = true;
+            maybeEnableButtons();
+        }
+
+        function maybeEnableButtons() {
+            if (gapiInited && gisInited) {
+                document.getElementById('authButton').disabled = false;
+                showStatus('Ready to authenticate!', 'info');
+            }
+        }
+
+        function handleAuthClick() {
+            tokenClient.callback = async (resp) => {
+                if (resp.error !== undefined) {
+                    showStatus('Authentication failed: ' + resp.error, 'error');
+                    throw (resp);
+                }
+                accessToken = gapi.client.getToken().access_token;
+                showStatus('Successfully authenticated!', 'success');
+                document.getElementById('authButton').style.display = 'none';
+                document.getElementById('signoutButton').style.display = 'inline-block';
+                document.getElementById('fetchButton').style.display = 'inline-block';
+            };
+
+            if (gapi.client.getToken() === null) {
+                tokenClient.requestAccessToken({prompt: 'consent'});
+            } else {
+                tokenClient.requestAccessToken({prompt: ''});
+            }
+        }
+
+        function handleSignoutClick() {
+            const token = gapi.client.getToken();
+            if (token !== null) {
+                google.accounts.oauth2.revoke(token.access_token);
+                gapi.client.setToken('');
+                accessToken = null;
+                document.getElementById('authButton').style.display = 'inline-block';
+                document.getElementById('signoutButton').style.display = 'none';
+                document.getElementById('fetchButton').style.display = 'none';
+                document.getElementById('dataDisplay').innerHTML = '';
+                showStatus('Signed out successfully', 'info');
+            }
+        }
+
+        function showStatus(message, type) {
+            const statusDiv = document.getElementById('statusMessage');
+            statusDiv.className = `status ${type}`;
+            statusDiv.textContent = message;
+            statusDiv.style.display = 'block';
+        }
+
+        function showLoading(show) {
+            document.getElementById('loadingIndicator').style.display = show ? 'block' : 'none';
+        }
+
+        async function fetchAllData() {
+            showLoading(true);
+            document.getElementById('dataDisplay').innerHTML = '';
+
+            try {
+                const allData = {};
+
+                // Fetch Channel Information
+                const channelResponse = await gapi.client.youtube.channels.list({
+                    part: 'snippet,contentDetails,statistics,brandingSettings,status,topicDetails',
+                    mine: true
+                });
+                allData.channel = channelResponse.result;
+
+                // Fetch Playlists
+                const playlistsResponse = await gapi.client.youtube.playlists.list({
+                    part: 'snippet,contentDetails,status',
+                    mine: true,
+                    maxResults: 50
+                });
+                allData.playlists = playlistsResponse.result;
+
+                // Fetch Subscriptions
+                const subscriptionsResponse = await gapi.client.youtube.subscriptions.list({
+                    part: 'snippet,contentDetails,subscriberSnippet',
+                    mine: true,
+                    maxResults: 50
+                });
+                allData.subscriptions = subscriptionsResponse.result;
+
+                // Fetch Uploaded Videos
+                if (allData.channel.items && allData.channel.items.length > 0) {
+                    const uploadsPlaylistId = allData.channel.items[0].contentDetails.relatedPlaylists.uploads;
+                    const videosResponse = await gapi.client.youtube.playlistItems.list({
+                        part: 'snippet,contentDetails,status',
+                        playlistId: uploadsPlaylistId,
+                        maxResults: 50
+                    });
+                    allData.videos = videosResponse.result;
+                }
+
+                // Fetch Activities
+                const activitiesResponse = await gapi.client.youtube.activities.list({
+                    part: 'snippet,contentDetails',
+                    mine: true,
+                    maxResults: 50
+                });
+                allData.activities = activitiesResponse.result;
+
+                displayData(allData);
+                showLoading(false);
+                showStatus('All data fetched successfully!', 'success');
+            } catch (error) {
+                console.error('Error fetching data:', error);
+                showLoading(false);
+                showStatus('Error fetching data: ' + error.message, 'error');
+            }
+        }
+
+        function displayData(data) {
+            const displayDiv = document.getElementById('dataDisplay');
+            let html = '';
+
+            // Channel Statistics
+            if (data.channel && data.channel.items && data.channel.items.length > 0) {
+                const channel = data.channel.items[0];
+                const stats = channel.statistics;
+
+                html += `
+                    <div class="data-category">
+                        <h3>📊 Channel Statistics</h3>
+                        <div class="stats">
+                            <div class="stat-card">
+                                <h4>${formatNumber(stats.subscriberCount)}</h4>
+                                <p>Subscribers</p>
+                            </div>
+                            <div class="stat-card">
+                                <h4>${formatNumber(stats.videoCount)}</h4>
+                                <p>Videos</p>
+                            </div>
+                            <div class="stat-card">
+                                <h4>${formatNumber(stats.viewCount)}</h4>
+                                <p>Total Views</p>
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+                // Channel Information
+                html += `
+                    <div class="data-category">
+                        <h3>📺 Channel Information</h3>
+                        <div class="data-item">
+                            <h4>${channel.snippet.title}</h4>
+                            ${channel.snippet.thumbnails.default ? `<img src="${channel.snippet.thumbnails.default.url}" class="thumbnail">` : ''}
+                            <p><strong>Description:</strong> ${channel.snippet.description || 'No description'}</p>
+                            <p><strong>Created:</strong> ${new Date(channel.snippet.publishedAt).toLocaleDateString()}</p>
+                            <p><strong>Country:</strong> ${channel.snippet.country || 'Not specified'}</p>
+                            <p><strong>Custom URL:</strong> ${channel.snippet.customUrl || 'Not set'}</p>
+                        </div>
+                        <details>
+                            <summary style="cursor: pointer; padding: 10px; background: #f0f0f0; margin-top: 10px; border-radius: 5px;">View Raw Channel Data</summary>
+                            <pre>${JSON.stringify(channel, null, 2)}</pre>
+                        </details>
+                    </div>
+                `;
+            }
+
+            // Playlists
+            if (data.playlists && data.playlists.items) {
+                html += `
+                    <div class="data-category">
+                        <h3>📋 Playlists (${data.playlists.items.length})</h3>
+                `;
+                data.playlists.items.forEach(playlist => {
+                    html += `
+                        <div class="data-item">
+                            <h4>${playlist.snippet.title}</h4>
+                            ${playlist.snippet.thumbnails.default ? `<img src="${playlist.snippet.thumbnails.default.url}" class="thumbnail">` : ''}
+                            <p>${playlist.snippet.description || 'No description'}</p>
+                            <p><strong>Item Count:</strong> ${playlist.contentDetails.itemCount}</p>
+                            <p><strong>Privacy:</strong> ${playlist.status.privacyStatus}</p>
+                        </div>
+                    `;
+                });
+                html += `
+                        <details>
+                            <summary style="cursor: pointer; padding: 10px; background: #f0f0f0; margin-top: 10px; border-radius: 5px;">View Raw Playlists Data</summary>
+                            <pre>${JSON.stringify(data.playlists, null, 2)}</pre>
+                        </details>
+                    </div>
+                `;
+            }
+
+            // Subscriptions
+            if (data.subscriptions && data.subscriptions.items) {
+                html += `
+                    <div class="data-category">
+                        <h3>⭐ Subscriptions (${data.subscriptions.items.length})</h3>
+                `;
+                data.subscriptions.items.slice(0, 10).forEach(sub => {
+                    html += `
+                        <div class="data-item">
+                            <h4>${sub.snippet.title}</h4>
+                            ${sub.snippet.thumbnails.default ? `<img src="${sub.snippet.thumbnails.default.url}" class="thumbnail">` : ''}
+                            <p>${sub.snippet.description || 'No description'}</p>
+                        </div>
+                    `;
+                });
+                html += `
+                        <details>
+                            <summary style="cursor: pointer; padding: 10px; background: #f0f0f0; margin-top: 10px; border-radius: 5px;">View Raw Subscriptions Data</summary>
+                            <pre>${JSON.stringify(data.subscriptions, null, 2)}</pre>
+                        </details>
+                    </div>
+                `;
+            }
+
+            // Videos
+            if (data.videos && data.videos.items) {
+                html += `
+                    <div class="data-category">
+                        <h3>🎬 Your Videos (${data.videos.items.length})</h3>
+                `;
+                data.videos.items.slice(0, 10).forEach(video => {
+                    html += `
+                        <div class="data-item">
+                            <h4>${video.snippet.title}</h4>
+                            ${video.snippet.thumbnails.default ? `<img src="${video.snippet.thumbnails.default.url}" class="thumbnail">` : ''}
+                            <p>${video.snippet.description || 'No description'}</p>
+                            <p><strong>Published:</strong> ${new Date(video.snippet.publishedAt).toLocaleDateString()}</p>
+                        </div>
+                    `;
+                });
+                html += `
+                        <details>
+                            <summary style="cursor: pointer; padding: 10px; background: #f0f0f0; margin-top: 10px; border-radius: 5px;">View Raw Videos Data</summary>
+                            <pre>${JSON.stringify(data.videos, null, 2)}</pre>
+                        </details>
+                    </div>
+                `;
+            }
+
+            // Activities
+            if (data.activities && data.activities.items) {
+                html += `
+                    <div class="data-category">
+                        <h3>📱 Recent Activities (${data.activities.items.length})</h3>
+                `;
+                data.activities.items.slice(0, 10).forEach(activity => {
+                    html += `
+                        <div class="data-item">
+                            <h4>${activity.snippet.type}</h4>
+                            <p><strong>Title:</strong> ${activity.snippet.title}</p>
+                            <p><strong>Published:</strong> ${new Date(activity.snippet.publishedAt).toLocaleDateString()}</p>
+                        </div>
+                    `;
+                });
+                html += `
+                        <details>
+                            <summary style="cursor: pointer; padding: 10px; background: #f0f0f0; margin-top: 10px; border-radius: 5px;">View Raw Activities Data</summary>
+                            <pre>${JSON.stringify(data.activities, null, 2)}</pre>
+                        </details>
+                    </div>
+                `;
+            }
+
+            displayDiv.innerHTML = html;
+        }
+
+        function formatNumber(num) {
+            if (!num) return '0';
+            if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
+            if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
+            return num.toString();
+        }
+
+        // Initialize on page load
+        window.onload = function() {
+            loadConfig();
+        };
+    </script>
+</body>
+</html>
