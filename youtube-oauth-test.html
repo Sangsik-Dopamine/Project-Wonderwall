@@ -239,8 +239,8 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>🎥 YouTube OAuth Test Page</h1>
-            <p>Retrieve and display all available data from your YouTube account</p>
+            <h1>🎥 YouTube 구독 채널 분석</h1>
+            <p>YouTube 구독 채널 목록을 가져와서 AI로 취향을 분석합니다</p>
         </div>
 
         <div class="content">
@@ -471,76 +471,29 @@
 
             const statusDiv = document.getElementById('statusMessage');
             statusDiv.className = 'status info';
-            statusDiv.innerHTML = 'Fetching data... This may take a moment for large collections.';
+            statusDiv.innerHTML = 'Fetching subscriptions...';
 
             try {
                 const allData = {};
-
-                // Fetch Channel Information
-                statusDiv.innerHTML = 'Fetching channel information...';
-                const channelResponse = await gapi.client.youtube.channels.list({
-                    part: 'snippet,contentDetails,statistics,brandingSettings,status,topicDetails',
-                    mine: true
-                });
-                allData.channel = channelResponse.result;
-
-                // Fetch ALL Playlists (with pagination)
-                statusDiv.innerHTML = 'Fetching all playlists...';
-                const playlistItems = await fetchAllPages(
-                    (params) => gapi.client.youtube.playlists.list(params),
-                    {
-                        part: 'snippet,contentDetails,status',
-                        mine: true,
-                        maxResults: 50
-                    }
-                );
-                allData.playlists = { items: playlistItems, totalItems: playlistItems.length };
 
                 // Fetch ALL Subscriptions (with pagination)
                 statusDiv.innerHTML = 'Fetching all subscriptions...';
                 const subscriptionItems = await fetchAllPages(
                     (params) => gapi.client.youtube.subscriptions.list(params),
                     {
-                        part: 'snippet,contentDetails,subscriberSnippet',
+                        part: 'snippet,contentDetails',
                         mine: true,
                         maxResults: 50
                     }
                 );
                 allData.subscriptions = { items: subscriptionItems, totalItems: subscriptionItems.length };
 
-                // Fetch ALL Uploaded Videos (with pagination)
-                if (allData.channel.items && allData.channel.items.length > 0) {
-                    statusDiv.innerHTML = 'Fetching all uploaded videos...';
-                    const uploadsPlaylistId = allData.channel.items[0].contentDetails.relatedPlaylists.uploads;
-                    const videoItems = await fetchAllPages(
-                        (params) => gapi.client.youtube.playlistItems.list(params),
-                        {
-                            part: 'snippet,contentDetails,status',
-                            playlistId: uploadsPlaylistId,
-                            maxResults: 50
-                        }
-                    );
-                    allData.videos = { items: videoItems, totalItems: videoItems.length };
-                }
-
-                // Fetch ALL Activities (with pagination)
-                statusDiv.innerHTML = 'Fetching all activities...';
-                const activityItems = await fetchAllPages(
-                    (params) => gapi.client.youtube.activities.list(params),
-                    {
-                        part: 'snippet,contentDetails',
-                        mine: true,
-                        maxResults: 50
-                    }
-                );
-                allData.activities = { items: activityItems, totalItems: activityItems.length };
-
                 // Store data for analysis
                 currentData = allData;
 
                 displayData(allData);
                 showLoading(false);
-                showStatus(`All data fetched successfully! Total: ${subscriptionItems.length} subscriptions, ${playlistItems.length} playlists, ${activityItems.length} activities`, 'success');
+                showStatus(`All data fetched successfully! Total: ${subscriptionItems.length} subscriptions`, 'success');
 
                 // Show analyze button if data is available
                 if (currentData && currentData.subscriptions && currentData.subscriptions.items.length > 0) {
@@ -557,146 +510,23 @@
             const displayDiv = document.getElementById('dataDisplay');
             let html = '';
 
-            // Channel Statistics
-            if (data.channel && data.channel.items && data.channel.items.length > 0) {
-                const channel = data.channel.items[0];
-                const stats = channel.statistics;
-
-                html += `
-                    <div class="data-category">
-                        <h3>📊 Channel Statistics</h3>
-                        <div class="stats">
-                            <div class="stat-card">
-                                <h4>${formatNumber(stats.subscriberCount)}</h4>
-                                <p>Subscribers</p>
-                            </div>
-                            <div class="stat-card">
-                                <h4>${formatNumber(stats.videoCount)}</h4>
-                                <p>Videos</p>
-                            </div>
-                            <div class="stat-card">
-                                <h4>${formatNumber(stats.viewCount)}</h4>
-                                <p>Total Views</p>
-                            </div>
-                        </div>
-                    </div>
-                `;
-
-                // Channel Information
-                html += `
-                    <div class="data-category">
-                        <h3>📺 Channel Information</h3>
-                        <div class="data-item">
-                            <h4>${channel.snippet.title}</h4>
-                            ${channel.snippet.thumbnails.default ? `<img src="${channel.snippet.thumbnails.default.url}" class="thumbnail">` : ''}
-                            <p><strong>Description:</strong> ${channel.snippet.description || 'No description'}</p>
-                            <p><strong>Created:</strong> ${new Date(channel.snippet.publishedAt).toLocaleDateString()}</p>
-                            <p><strong>Country:</strong> ${channel.snippet.country || 'Not specified'}</p>
-                            <p><strong>Custom URL:</strong> ${channel.snippet.customUrl || 'Not set'}</p>
-                        </div>
-                        <details>
-                            <summary style="cursor: pointer; padding: 10px; background: #f0f0f0; margin-top: 10px; border-radius: 5px;">View Raw Channel Data</summary>
-                            <pre>${JSON.stringify(channel, null, 2)}</pre>
-                        </details>
-                    </div>
-                `;
-            }
-
-            // Playlists
-            if (data.playlists && data.playlists.items) {
-                html += `
-                    <div class="data-category">
-                        <h3>📋 Playlists (${data.playlists.items.length})</h3>
-                `;
-                data.playlists.items.forEach(playlist => {
-                    html += `
-                        <div class="data-item">
-                            <h4>${playlist.snippet.title}</h4>
-                            ${playlist.snippet.thumbnails.default ? `<img src="${playlist.snippet.thumbnails.default.url}" class="thumbnail">` : ''}
-                            <p>${playlist.snippet.description || 'No description'}</p>
-                            <p><strong>Item Count:</strong> ${playlist.contentDetails.itemCount}</p>
-                            <p><strong>Privacy:</strong> ${playlist.status.privacyStatus}</p>
-                        </div>
-                    `;
-                });
-                html += `
-                        <details>
-                            <summary style="cursor: pointer; padding: 10px; background: #f0f0f0; margin-top: 10px; border-radius: 5px;">View Raw Playlists Data</summary>
-                            <pre>${JSON.stringify(data.playlists, null, 2)}</pre>
-                        </details>
-                    </div>
-                `;
-            }
-
-            // Subscriptions
+            // Subscriptions - Name and Description only
             if (data.subscriptions && data.subscriptions.items) {
                 html += `
                     <div class="data-category">
-                        <h3>⭐ Subscriptions (${data.subscriptions.items.length})</h3>
+                        <h3>⭐ 구독 채널 (${data.subscriptions.items.length}개)</h3>
                 `;
-                data.subscriptions.items.slice(0, 10).forEach(sub => {
-                    html += `
-                        <div class="data-item">
-                            <h4>${sub.snippet.title}</h4>
-                            ${sub.snippet.thumbnails.default ? `<img src="${sub.snippet.thumbnails.default.url}" class="thumbnail">` : ''}
-                            <p>${sub.snippet.description || 'No description'}</p>
-                        </div>
-                    `;
-                });
-                html += `
-                        <details>
-                            <summary style="cursor: pointer; padding: 10px; background: #f0f0f0; margin-top: 10px; border-radius: 5px;">View Raw Subscriptions Data</summary>
-                            <pre>${JSON.stringify(data.subscriptions, null, 2)}</pre>
-                        </details>
-                    </div>
-                `;
-            }
 
-            // Videos
-            if (data.videos && data.videos.items) {
-                html += `
-                    <div class="data-category">
-                        <h3>🎬 Your Videos (${data.videos.items.length})</h3>
-                `;
-                data.videos.items.slice(0, 10).forEach(video => {
+                data.subscriptions.items.forEach((sub, index) => {
                     html += `
                         <div class="data-item">
-                            <h4>${video.snippet.title}</h4>
-                            ${video.snippet.thumbnails.default ? `<img src="${video.snippet.thumbnails.default.url}" class="thumbnail">` : ''}
-                            <p>${video.snippet.description || 'No description'}</p>
-                            <p><strong>Published:</strong> ${new Date(video.snippet.publishedAt).toLocaleDateString()}</p>
+                            <p><strong>${index + 1}. ${sub.snippet.title}</strong></p>
+                            <p style="color: #666; margin-top: 5px;">${sub.snippet.description || '설명 없음'}</p>
                         </div>
                     `;
                 });
-                html += `
-                        <details>
-                            <summary style="cursor: pointer; padding: 10px; background: #f0f0f0; margin-top: 10px; border-radius: 5px;">View Raw Videos Data</summary>
-                            <pre>${JSON.stringify(data.videos, null, 2)}</pre>
-                        </details>
-                    </div>
-                `;
-            }
 
-            // Activities
-            if (data.activities && data.activities.items) {
                 html += `
-                    <div class="data-category">
-                        <h3>📱 Recent Activities (${data.activities.items.length})</h3>
-                `;
-                data.activities.items.slice(0, 10).forEach(activity => {
-                    html += `
-                        <div class="data-item">
-                            <h4>${activity.snippet.type}</h4>
-                            <p><strong>Title:</strong> ${activity.snippet.title}</p>
-                            <p><strong>Published:</strong> ${new Date(activity.snippet.publishedAt).toLocaleDateString()}</p>
-                        </div>
-                    `;
-                });
-                html += `
-                        <details>
-                            <summary style="cursor: pointer; padding: 10px; background: #f0f0f0; margin-top: 10px; border-radius: 5px;">View Raw Activities Data</summary>
-                            <pre>${JSON.stringify(data.activities, null, 2)}</pre>
-                        </details>
                     </div>
                 `;
             }
@@ -753,8 +583,6 @@ ${subscriptions}
                 <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
                     <p style="margin: 0 0 10px 0; font-weight: bold; color: #333;">📊 수집된 데이터:</p>
                     <p style="margin: 0; color: #666;">• 구독 채널: ${currentData.subscriptions.items.length}개</p>
-                    <p style="margin: 0; color: #666;">• 플레이리스트: ${currentData.playlists?.items?.length || 0}개</p>
-                    <p style="margin: 0; color: #666;">• 업로드 영상: ${currentData.videos?.items?.length || 0}개</p>
                 </div>
 
                 <label style="display: block; font-weight: bold; margin: 15px 0 8px 0; color: #333;">
