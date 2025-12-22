@@ -53,10 +53,10 @@ CREATE TRIGGER set_updated_at
 
 -- 4. 암호화 키 설정 (데이터베이스 레벨)
 -- ----------------------------------------------------------------------------
--- 주의: 'your-super-secret-key-here'를 실제 강력한 키로 변경하세요!
--- 키 생성: node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
+-- 주의: 이 키는 자동 생성되었습니다. 운영 환경에서는 별도로 관리하세요!
+-- 키: snioizx72mCUCJYclw1eYgRe7vsmfzxSZ4nscfysUlY=
 ALTER DATABASE postgres
-  SET app.settings.encryption_key TO 'your-super-secret-encryption-key-change-this-in-production-min-32-chars';
+  SET app.settings.encryption_key TO 'snioizx72mCUCJYclw1eYgRe7vsmfzxSZ4nscfysUlY=';
 
 
 -- 5. 토큰 암호화 함수
