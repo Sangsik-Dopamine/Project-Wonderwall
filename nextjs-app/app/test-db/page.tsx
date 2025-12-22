@@ -21,14 +21,21 @@ export default function TestDbPage() {
           return
         }
 
-        // 추가 테스트: 간단한 쿼리 실행 (실제 테이블이 없어도 연결은 확인 가능)
+        // 추가 테스트: 간단한 쿼리 실행으로 API 연결 확인
         const { error: healthError } = await supabase
           .from('_health_check')
           .select('*')
           .limit(0)
 
-        // 404나 테이블 없음 에러는 괜찮음 (연결은 성공)
-        if (healthError && !healthError.message.includes('does not exist')) {
+        // 테이블 관련 에러는 괜찮음 (연결 자체는 성공)
+        const isTableError = healthError && (
+          healthError.message.includes('does not exist') ||
+          healthError.message.includes('Could not find the table') ||
+          healthError.code === 'PGRST116' ||
+          healthError.code === '42P01'
+        )
+
+        if (healthError && !isTableError) {
           setStatus('failed')
           setMessage('실패')
           setDetails(`연결 에러: ${healthError.message}`)
