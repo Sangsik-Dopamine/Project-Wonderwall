@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { supabase } from '@/lib/supabaseClient'
+import { createClient } from '@/utils/supabase/client'
 
 export default function TestDbPage() {
   const [status, setStatus] = useState<'loading' | 'success' | 'failed'>('loading')
@@ -10,6 +10,8 @@ export default function TestDbPage() {
 
   useEffect(() => {
     async function testConnection() {
+      const supabase = createClient()
+
       try {
         // Supabase 연결 테스트: auth.getSession() 호출
         const { data, error } = await supabase.auth.getSession()
