@@ -51,27 +51,25 @@ CREATE TRIGGER set_updated_at
   EXECUTE FUNCTION public.handle_updated_at();
 
 
--- 4. 암호화 키 설정 (데이터베이스 레벨)
+-- 4. 암호화 키 설정
 -- ----------------------------------------------------------------------------
--- 주의: 이 키는 자동 생성되었습니다. 운영 환경에서는 별도로 관리하세요!
--- 키: snioizx72mCUCJYclw1eYgRe7vsmfzxSZ4nscfysUlY=
-ALTER DATABASE postgres
-  SET app.settings.encryption_key TO 'snioizx72mCUCJYclw1eYgRe7vsmfzxSZ4nscfysUlY=';
+-- 주의: Supabase에서는 함수 내에 키를 포함시킵니다
+-- 암호화 키: snioizx72mCUCJYclw1eYgRe7vsmfzxSZ4nscfysUlY=
+-- 운영 환경에서는 Supabase Vault 사용을 권장합니다
 
 
 -- 5. 토큰 암호화 함수
 -- ----------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION public.encrypt_token(token TEXT)
 RETURNS BYTEA AS $$
+DECLARE
+  encryption_key TEXT := 'snioizx72mCUCJYclw1eYgRe7vsmfzxSZ4nscfysUlY=';
 BEGIN
   IF token IS NULL THEN
     RETURN NULL;
   END IF;
 
-  RETURN pgp_sym_encrypt(
-    token,
-    current_setting('app.settings.encryption_key', true)
-  );
+  RETURN pgp_sym_encrypt(token, encryption_key);
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
@@ -80,15 +78,14 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 -- ----------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION public.decrypt_token(encrypted_token BYTEA)
 RETURNS TEXT AS $$
+DECLARE
+  encryption_key TEXT := 'snioizx72mCUCJYclw1eYgRe7vsmfzxSZ4nscfysUlY=';
 BEGIN
   IF encrypted_token IS NULL THEN
     RETURN NULL;
   END IF;
 
-  RETURN pgp_sym_decrypt(
-    encrypted_token,
-    current_setting('app.settings.encryption_key', true)
-  );
+  RETURN pgp_sym_decrypt(encrypted_token, encryption_key);
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
