@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
 
     const anthropic = new Anthropic({ apiKey })
 
-    console.log('Creating Wonderwall essay with Claude 3.5 Sonnet...')
+    console.log('Creating Wonderwall essay with Claude Sonnet 4.5...')
     console.log('Keywords length:', keywords.length, 'characters')
 
     // 프롬프트 생성
@@ -56,9 +56,9 @@ ${keywords}`
     const stream = new ReadableStream({
       async start(controller) {
         try {
-          // Claude API 스트리밍 호출
+          // Claude Sonnet 4.5 API 스트리밍 호출
           const streamResponse = await anthropic.messages.stream({
-            model: 'claude-3-5-sonnet-20241022',
+            model: 'claude-sonnet-4-5-20250929',
             max_tokens: 4096,
             temperature: 0.8,
             system: systemPrompt,
