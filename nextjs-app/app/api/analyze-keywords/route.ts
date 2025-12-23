@@ -49,12 +49,6 @@ ${JSON.stringify(subscriptionData, null, 2)}`
           const response = await ai.models.generateContentStream({
             model: 'gemini-2.5-flash',
             contents: prompt,
-            config: {
-              thinkingConfig: {
-                thinkingBudget: -1, // 동적 thinking (복잡도에 따라 자동 조절)
-                includeThoughts: true, // 사고 과정 포함
-              },
-            },
           })
 
           // 스트리밍 응답 처리 (response를 직접 iterate)
