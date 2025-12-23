@@ -35,22 +35,21 @@ export async function POST(request: NextRequest) {
 
     console.log('Total channels:', subscriptionData.channels?.length || 0)
 
-    // 채널 데이터 간소화 (title만 사용) - API 토큰 제한 방지
-    const simplifiedData = {
-      channels: subscriptionData.channels?.map((channel: any) => ({
-        title: channel.title
-      })) || []
-    }
+    // 채널 수 제한 + 간소화 (title만, 최대 100개)
+    const MAX_CHANNELS = 100
+    const channels = subscriptionData.channels?.slice(0, MAX_CHANNELS) || []
+    const channelTitles = channels.map((channel: any) => channel.title).join('\n')
 
     console.log('Calling Claude API for keyword extraction...')
-    console.log('Analyzing channels:', simplifiedData.channels.length)
+    console.log('Analyzing channels:', channels.length)
 
     // 프롬프트 생성
     const systemPrompt = `너는 유튜브 구독 채널 데이터를 분석해서 사용자의 관심사를 파악하는 전문가야. 채널 제목을 보고 각 채널의 핵심 주제를 3개의 키워드로 추출해줘.`
 
     const userPrompt = `다음은 유튜브 채널 제목 리스트이다. 각 채널의 특징을 분석해서 채널당 3개의 핵심 키워드를 추출해줘. 다른 설명은 생략하고 오직 추출된 키워드들만 콤마(,)로 구분된 형식으로 나열해줘.
 
-${JSON.stringify(simplifiedData, null, 2)}`
+채널 리스트:
+${channelTitles}`
 
     console.log('Prompt length:', userPrompt.length, 'characters')
 
