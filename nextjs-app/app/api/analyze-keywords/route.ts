@@ -35,9 +35,8 @@ export async function POST(request: NextRequest) {
 
     console.log('Total channels:', subscriptionData.channels?.length || 0)
 
-    // 채널 수 제한 + 간소화 (title만, 최대 100개)
-    const MAX_CHANNELS = 100
-    const channels = subscriptionData.channels?.slice(0, MAX_CHANNELS) || []
+    // 채널 제목만 추출 (간소화)
+    const channels = subscriptionData.channels || []
     const channelTitles = channels.map((channel: any) => channel.title).join('\n')
 
     console.log('Calling Claude API for keyword extraction...')
