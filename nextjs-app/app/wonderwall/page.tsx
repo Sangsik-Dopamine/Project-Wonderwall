@@ -117,14 +117,14 @@ export default function WonderwallPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 py-12 px-4">
-      <div className="max-w-4xl mx-auto">
+    <div className="min-h-screen bg-white py-16 px-4">
+      <div className="max-w-3xl mx-auto">
         {/* 헤더 */}
-        <div className="text-center mb-12">
-          <h1 className="text-6xl font-bold bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 bg-clip-text text-transparent mb-4">
+        <div className="text-center mb-16">
+          <h1 className="text-4xl font-bold text-gray-900 mb-3" style={{ fontFamily: 'Pretendard Variable, Pretendard, sans-serif' }}>
             Wonderwall
           </h1>
-          <p className="text-xl text-gray-600">
+          <p className="text-base text-gray-500">
             당신의 관심사가 만들어낸 아름다운 초상화
           </p>
         </div>
@@ -138,13 +138,14 @@ export default function WonderwallPage() {
 
         {/* 생성 버튼 */}
         {!essay && !isGenerating && (
-          <div className="text-center mb-12">
+          <div className="text-center mb-16">
             <button
               onClick={handleGenerate}
               disabled={!keywords}
-              className="px-12 py-6 text-xl font-bold text-white bg-gradient-to-r from-indigo-600 to-purple-600 rounded-2xl shadow-2xl hover:from-indigo-700 hover:to-purple-700 transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+              className="px-10 py-4 text-base font-semibold text-white bg-gray-900 rounded-lg hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              style={{ fontFamily: 'Pretendard Variable, Pretendard, sans-serif' }}
             >
-              {keywords ? '나의 Wonderwall 만들기 ✨' : '키워드가 없습니다'}
+              {keywords ? '나의 Wonderwall 만들기' : '키워드가 없습니다'}
             </button>
             {!keywords && (
               <p className="mt-4 text-sm text-gray-500">
@@ -156,77 +157,97 @@ export default function WonderwallPage() {
 
         {/* 생성 중 표시 */}
         {isGenerating && (
-          <div className="text-center mb-8">
-            <div className="inline-flex items-center gap-3 px-8 py-4 bg-white rounded-xl shadow-lg">
-              <svg
-                className="animate-spin h-6 w-6 text-purple-600"
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-              >
-                <circle
-                  className="opacity-25"
-                  cx="12"
-                  cy="12"
-                  r="10"
-                  stroke="currentColor"
-                  strokeWidth="4"
-                ></circle>
-                <path
-                  className="opacity-75"
-                  fill="currentColor"
-                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                ></path>
-              </svg>
-              <span className="text-lg font-semibold text-gray-700">
-                AI가 당신의 Wonderwall을 그리고 있습니다...
-              </span>
-            </div>
+          <div className="text-center mb-16">
+            <p className="text-base text-gray-600" style={{ fontFamily: 'Pretendard Variable, Pretendard, sans-serif' }}>
+              AI가 당신의 Wonderwall을 작성하고 있습니다...
+            </p>
           </div>
         )}
 
-        {/* AI 사고 과정 */}
-        {thoughts && (
-          <div className="mb-8 p-6 bg-white rounded-xl shadow-lg border-2 border-blue-200">
-            <div className="flex items-center gap-2 mb-4">
-              <div className="text-2xl">🧠</div>
-              <h3 className="text-lg font-bold text-gray-900">AI 사고 과정</h3>
-            </div>
-            <div className="bg-blue-50 rounded-lg p-6 max-h-64 overflow-y-auto">
-              <div className="text-sm text-gray-700 whitespace-pre-wrap font-mono">
-                {thoughts}
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* 에세이 결과 */}
         {essay && (
-          <div className="mb-8">
-            <div className="p-8 bg-white rounded-2xl shadow-2xl border-2 border-purple-200">
-              <div className="prose prose-lg max-w-none">
-                <div className="text-gray-800 leading-relaxed whitespace-pre-wrap">
-                  {essay}
-                </div>
-              </div>
+          <div className="mb-12">
+            <div className="bg-white px-12 py-16 rounded-lg shadow-sm border border-gray-100">
+              <style jsx>{`
+                .essay-content {
+                  font-family: 'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+                  font-size: 18px;
+                  line-height: 2.2;
+                  color: #1a1a1a;
+                  letter-spacing: -0.02em;
+                }
+
+                .essay-content h1,
+                .essay-content h2,
+                .essay-content h3 {
+                  font-weight: 700;
+                  margin-top: 2.5em;
+                  margin-bottom: 1em;
+                  line-height: 1.4;
+                }
+
+                .essay-content h1 {
+                  font-size: 28px;
+                }
+
+                .essay-content h2 {
+                  font-size: 24px;
+                }
+
+                .essay-content h3 {
+                  font-size: 20px;
+                }
+
+                .essay-content p {
+                  margin-bottom: 1.8em;
+                }
+
+                .essay-content strong {
+                  font-weight: 600;
+                  color: #000;
+                }
+              `}</style>
+              <div
+                className="essay-content"
+                dangerouslySetInnerHTML={{
+                  __html: essay
+                    .split('\n\n')
+                    .map((para, i) => {
+                      // 숫자로 시작하는 줄은 제목으로 처리
+                      if (para.match(/^[0-9]+[).]\s/)) {
+                        return `<h2>${para}</h2>`
+                      }
+                      // **로 감싸진 텍스트는 섹션 제목
+                      if (para.match(/^\*\*.+\*\*$/)) {
+                        return `<h3>${para.replace(/\*\*/g, '')}</h3>`
+                      }
+                      // 일반 단락
+                      return para.trim() ? `<p>${para}</p>` : ''
+                    })
+                    .join('')
+                }}
+              />
             </div>
           </div>
         )}
 
         {/* 공유 버튼 */}
         {isComplete && essay && (
-          <div className="flex gap-4 justify-center">
+          <div className="flex gap-3 justify-center">
             <button
               onClick={handleShareLink}
-              className="px-8 py-4 text-lg font-semibold text-white bg-gradient-to-r from-blue-600 to-cyan-600 rounded-xl shadow-lg hover:from-blue-700 hover:to-cyan-700 transition-all transform hover:scale-105"
+              className="px-6 py-3 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+              style={{ fontFamily: 'Pretendard Variable, Pretendard, sans-serif' }}
             >
-              🔗 링크 공유하기
+              링크 공유하기
             </button>
             <button
               onClick={handleShareLinktree}
-              className="px-8 py-4 text-lg font-semibold text-white bg-gradient-to-r from-green-600 to-emerald-600 rounded-xl shadow-lg hover:from-green-700 hover:to-emerald-700 transition-all transform hover:scale-105"
+              className="px-6 py-3 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+              style={{ fontFamily: 'Pretendard Variable, Pretendard, sans-serif' }}
             >
-              🌳 링크트리 공유하기
+              링크트리 공유하기
             </button>
           </div>
         )}
