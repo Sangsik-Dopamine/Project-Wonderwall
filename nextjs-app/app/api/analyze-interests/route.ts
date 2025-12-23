@@ -129,6 +129,7 @@ export async function POST(request: NextRequest) {
       success: true,
       filename,
       totalSubscriptions: subscriptionData.totalSubscriptions,
+      subscriptionData, // 프론트엔드로 데이터 전달
     })
   } catch (error: any) {
     console.error('Error in analyze-interests:', error)
