@@ -30,20 +30,12 @@ export async function POST(request: NextRequest) {
 
     const ai = new GoogleGenAI({ apiKey })
 
-    // 채널 수 제한 (성능 최적화)
-    const MAX_CHANNELS = 50
-    const limitedData = {
-      ...subscriptionData,
-      channels: subscriptionData.channels?.slice(0, MAX_CHANNELS) || []
-    }
-
-    console.log('Original channels:', subscriptionData.channels?.length || 0)
-    console.log('Analyzing channels:', limitedData.channels.length)
+    console.log('Total channels:', subscriptionData.channels?.length || 0)
 
     // 프롬프트 생성
     const prompt = `다음은 JSON 형식의 유튜브 채널 리스트이다. 각 채널의 특징을 분석해서 채널당 3개의 핵심 키워드를 추출해라. 다른 설명은 생략하고 오직 추출된 키워드들만 콤마(,)로 구분된 마크다운 형식으로 나열해라.
 
-${JSON.stringify(limitedData, null, 2)}`
+${JSON.stringify(subscriptionData, null, 2)}`
 
     console.log('Calling Gemini API with streaming...')
     console.log('Prompt length:', prompt.length, 'characters')

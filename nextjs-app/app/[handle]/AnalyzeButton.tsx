@@ -46,9 +46,9 @@ export default function AnalyzeButton() {
       // 2. Gemini API로 키워드 추출 (스트리밍)
       setIsExtractingKeywords(true)
 
-      // 타임아웃 설정 (60초)
+      // 타임아웃 설정 (3분)
       const controller = new AbortController()
-      const timeoutId = setTimeout(() => controller.abort(), 60000)
+      const timeoutId = setTimeout(() => controller.abort(), 180000)
 
       try {
         const keywordResponse = await fetch('/api/analyze-keywords', {
