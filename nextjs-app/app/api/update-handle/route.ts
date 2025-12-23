@@ -6,9 +6,16 @@ export async function POST(request: NextRequest) {
   try {
     // 쿠키에서 사용자 google_id 가져오기
     const cookieStore = await cookies()
+    const allCookies = cookieStore.getAll()
     const googleId = cookieStore.get('user_google_id')?.value
 
+    console.log('Update Handle - Cookies Debug:', {
+      allCookies: allCookies.map(c => ({ name: c.name, hasValue: !!c.value })),
+      googleId,
+    })
+
     if (!googleId) {
+      console.log('No google_id cookie found')
       return NextResponse.json(
         { error: 'Not authenticated' },
         { status: 401 }
