@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { GoogleGenerativeAI } from '@google/generative-ai'
+import { GoogleGenAI } from '@google/genai'
 
 export async function POST(request: NextRequest) {
   try {
@@ -22,8 +22,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const genAI = new GoogleGenerativeAI(apiKey)
-    const model = genAI.getGenerativeModel({ model: 'gemini-pro' })
+    const ai = new GoogleGenAI({ apiKey })
 
     // 프롬프트 생성
     const prompt = `다음은 JSON 형식의 유튜브 채널 리스트이다. 각 채널의 특징을 분석해서 채널당 3개의 핵심 키워드를 추출해라. 다른 설명은 생략하고 오직 추출된 키워드들만 콤마(,)로 구분된 마크다운 형식으로 나열해라.
@@ -33,10 +32,13 @@ ${JSON.stringify(subscriptionData, null, 2)}`
     console.log('Calling Gemini API...')
     console.log('Total channels:', subscriptionData.channels?.length || 0)
 
-    // Gemini API 호출
-    const result = await model.generateContent(prompt)
-    const response = await result.response
-    const keywords = response.text()
+    // Gemini API 호출 (새로운 API 형식)
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: prompt,
+    })
+
+    const keywords = response.text
 
     console.log('Keywords extracted successfully')
     console.log('Keywords length:', keywords.length)
