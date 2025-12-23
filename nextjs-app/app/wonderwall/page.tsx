@@ -117,14 +117,14 @@ export default function WonderwallPage() {
   }
 
   return (
-    <div className="min-h-screen bg-white py-16 px-4">
+    <div className="min-h-screen bg-black py-16 px-4">
       <div className="max-w-3xl mx-auto">
         {/* 헤더 */}
         <div className="text-center mb-16">
-          <h1 className="text-4xl font-bold text-gray-900 mb-3" style={{ fontFamily: 'Pretendard Variable, Pretendard, sans-serif' }}>
+          <h1 className="text-4xl font-bold text-white mb-3" style={{ fontFamily: 'Pretendard Variable, Pretendard, sans-serif' }}>
             Wonderwall
           </h1>
-          <p className="text-base text-gray-500">
+          <p className="text-base text-gray-400">
             당신의 관심사가 만들어낸 아름다운 초상화
           </p>
         </div>
@@ -142,13 +142,13 @@ export default function WonderwallPage() {
             <button
               onClick={handleGenerate}
               disabled={!keywords}
-              className="px-10 py-4 text-base font-semibold text-white bg-gray-900 rounded-lg hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-10 py-4 text-base font-semibold text-black bg-white rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               style={{ fontFamily: 'Pretendard Variable, Pretendard, sans-serif' }}
             >
               {keywords ? '나의 Wonderwall 만들기' : '키워드가 없습니다'}
             </button>
             {!keywords && (
-              <p className="mt-4 text-sm text-gray-500">
+              <p className="mt-4 text-sm text-gray-400">
                 먼저 관심사 분석을 완료해주세요
               </p>
             )}
@@ -158,7 +158,7 @@ export default function WonderwallPage() {
         {/* 생성 중 표시 */}
         {isGenerating && (
           <div className="text-center mb-16">
-            <p className="text-base text-gray-600" style={{ fontFamily: 'Pretendard Variable, Pretendard, sans-serif' }}>
+            <p className="text-base text-gray-400" style={{ fontFamily: 'Pretendard Variable, Pretendard, sans-serif' }}>
               AI가 당신의 Wonderwall을 작성하고 있습니다...
             </p>
           </div>
@@ -168,13 +168,13 @@ export default function WonderwallPage() {
         {/* 에세이 결과 */}
         {essay && (
           <div className="mb-12">
-            <div className="bg-white px-12 py-16 rounded-lg shadow-sm border border-gray-100">
+            <div className="bg-black px-12 py-16 rounded-lg">
               <style jsx>{`
                 .essay-content {
                   font-family: 'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
                   font-size: 18px;
                   line-height: 2.2;
-                  color: #1a1a1a;
+                  color: #ffffff;
                   letter-spacing: -0.02em;
                 }
 
@@ -185,6 +185,7 @@ export default function WonderwallPage() {
                   margin-top: 2.5em;
                   margin-bottom: 1em;
                   line-height: 1.4;
+                  color: #ffffff;
                 }
 
                 .essay-content h1 {
@@ -201,11 +202,12 @@ export default function WonderwallPage() {
 
                 .essay-content p {
                   margin-bottom: 1.8em;
+                  color: #ffffff;
                 }
 
                 .essay-content strong {
                   font-weight: 600;
-                  color: #000;
+                  color: #ffffff;
                 }
               `}</style>
               <div
@@ -237,14 +239,14 @@ export default function WonderwallPage() {
           <div className="flex gap-3 justify-center">
             <button
               onClick={handleShareLink}
-              className="px-6 py-3 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+              className="px-6 py-3 text-sm font-medium text-black bg-white border border-gray-600 rounded-lg hover:bg-gray-200 transition-colors"
               style={{ fontFamily: 'Pretendard Variable, Pretendard, sans-serif' }}
             >
               링크 공유하기
             </button>
             <button
               onClick={handleShareLinktree}
-              className="px-6 py-3 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+              className="px-6 py-3 text-sm font-medium text-black bg-white border border-gray-600 rounded-lg hover:bg-gray-200 transition-colors"
               style={{ fontFamily: 'Pretendard Variable, Pretendard, sans-serif' }}
             >
               링크트리 공유하기
@@ -256,7 +258,7 @@ export default function WonderwallPage() {
         <div className="text-center mt-12">
           <button
             onClick={() => router.back()}
-            className="text-gray-600 hover:text-gray-900 underline"
+            className="text-gray-400 hover:text-white underline"
           >
             ← 돌아가기
           </button>
