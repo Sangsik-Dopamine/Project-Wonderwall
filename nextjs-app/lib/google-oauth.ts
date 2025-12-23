@@ -20,7 +20,7 @@ const SCOPES = [
  */
 export function getGoogleOAuthURL(): string {
   const params = new URLSearchParams({
-    client_id: process.env.GOOGLE_CLIENT_ID!,
+    client_id: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID!,
     redirect_uri: process.env.NEXT_PUBLIC_OAUTH_REDIRECT_URI!,
     response_type: 'code',
     scope: SCOPES.join(' '),
@@ -42,7 +42,7 @@ export async function exchangeCodeForTokens(code: string) {
     },
     body: new URLSearchParams({
       code,
-      client_id: process.env.GOOGLE_CLIENT_ID!,
+      client_id: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID!,
       client_secret: process.env.GOOGLE_CLIENT_SECRET!,
       redirect_uri: process.env.NEXT_PUBLIC_OAUTH_REDIRECT_URI!,
       grant_type: 'authorization_code',
@@ -98,7 +98,7 @@ export async function refreshAccessToken(refreshToken: string) {
       'Content-Type': 'application/x-www-form-urlencoded',
     },
     body: new URLSearchParams({
-      client_id: process.env.GOOGLE_CLIENT_ID!,
+      client_id: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID!,
       client_secret: process.env.GOOGLE_CLIENT_SECRET!,
       refresh_token: refreshToken,
       grant_type: 'refresh_token',
