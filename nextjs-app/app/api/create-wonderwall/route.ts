@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server'
-import { GoogleGenAI } from '@google/genai'
+import OpenAI from 'openai'
 
 export async function POST(request: NextRequest) {
   try {
@@ -15,12 +15,12 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Gemini API 초기화
-    const apiKey = process.env.GEMINI_API_KEY
+    // OpenAI API 초기화
+    const apiKey = process.env.OPENAI_API_KEY
     if (!apiKey) {
-      console.error('GEMINI_API_KEY is not set')
+      console.error('OPENAI_API_KEY is not set')
       return new Response(
-        JSON.stringify({ error: 'Gemini API key is not configured' }),
+        JSON.stringify({ error: 'OpenAI API key is not configured' }),
         {
           status: 500,
           headers: { 'Content-Type': 'application/json' }
@@ -28,15 +28,15 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const ai = new GoogleGenAI({ apiKey })
+    const openai = new OpenAI({ apiKey })
 
-    console.log('Creating Wonderwall essay...')
+    console.log('Creating Wonderwall essay with GPT-4o...')
     console.log('Keywords length:', keywords.length, 'characters')
 
     // 프롬프트 생성
-    const prompt = `# 너는 한 사람의 관심사와 취향을 기반으로 그 사람의 숨겨진 아름다운 면을 드러내는 에세이스트야. 전반적으로 "당신의 취향은 어떤 것 때문에 이렇게 돋보입니다" 하는 식으로 차분하고 설명적으로 출력해 주고, 전체 분량은 2500자 정도로 맞춰줘. 출력 전에 결과물을 한번 더 검토하고, 성적이거나 정치적으로 민감한 내용은 삭제해주고 긍정적인 부분을 부각시켜줘.
+    const systemPrompt = `너는 한 사람의 관심사와 취향을 기반으로 그 사람의 숨겨진 아름다운 면을 드러내는 에세이스트야. 전반적으로 "당신의 취향은 어떤 것 때문에 이렇게 돋보입니다" 하는 식으로 차분하고 설명적으로 출력해 주고, 전체 분량은 2500자 정도로 맞춰줘. 출력 전에 결과물을 한번 더 검토하고, 성적이거나 정치적으로 민감한 내용은 삭제해주고 긍정적인 부분을 부각시켜줘.`
 
-# 아래는 어떤 사람의 유투브 구독채널에서 추출한 키워드야. 이것을 기반으로 다음 작업을 순차적으로 진행해줘.
+    const userPrompt = `아래는 어떤 사람의 유투브 구독채널에서 추출한 키워드야. 이것을 기반으로 다음 작업을 순차적으로 진행해줘.
 
 1) 이 사람의 취향과 개성을 추론하고, 취향, 관심사를 유의미한 카테고리로 묶어줘. 출력순서는 문화와 예술, 인문, 과학 등 비실용적 분야가 앞에, 경제, 투자 등 실용적 분야가 뒤에 나오도록 배치해줘.
 
@@ -56,37 +56,27 @@ ${keywords}`
     const stream = new ReadableStream({
       async start(controller) {
         try {
-          // Gemini API 스트리밍 호출 (thinking mode 활성화)
-          const response = await ai.models.generateContentStream({
-            model: 'gemini-2.5-flash',
-            contents: prompt,
-            config: {
-              thinkingConfig: {
-                thinkingBudget: -1, // 동적 thinking
-                includeThoughts: true, // 사고 과정 포함
-              },
-            },
+          // OpenAI API 스트리밍 호출
+          const completion = await openai.chat.completions.create({
+            model: 'gpt-4o',
+            messages: [
+              { role: 'system', content: systemPrompt },
+              { role: 'user', content: userPrompt }
+            ],
+            stream: true,
+            temperature: 0.8,
           })
 
           // 스트리밍 응답 처리
-          for await (const chunk of response) {
-            const data: any = {
-              text: chunk.text || '',
-              thoughts: '',
-            }
+          for await (const chunk of completion) {
+            const content = chunk.choices[0]?.delta?.content || ''
 
-            // 사고 과정 추출
-            if (chunk.candidates?.[0]?.content?.parts) {
-              const parts = chunk.candidates[0].content.parts
-              for (const part of parts) {
-                if (part.thought) {
-                  data.thoughts = part.text || ''
-                }
+            if (content) {
+              // 간단한 JSON 형식으로 전송 (thoughts는 비어있음)
+              const data = {
+                text: content,
+                thoughts: '',
               }
-            }
-
-            // JSON 형식으로 전송
-            if (data.text || data.thoughts) {
               controller.enqueue(encoder.encode(JSON.stringify(data) + '\n'))
             }
           }
