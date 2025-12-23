@@ -51,17 +51,26 @@ function OnboardingContent() {
       .slice(0, 20)
 
     setHandle(newHandle)
-
-    if (newHandle !== defaultHandle) {
-      const timeoutId = setTimeout(() => {
-        checkHandleAvailability(newHandle)
-      }, 500)
-
-      return () => clearTimeout(timeoutId)
-    } else {
-      setIsAvailable(true)
-    }
   }
+
+  // 핸들 변경 시 디바운스 적용하여 중복 확인
+  useEffect(() => {
+    if (handle === defaultHandle) {
+      setIsAvailable(true)
+      return
+    }
+
+    if (!handle || handle.length < 3) {
+      setIsAvailable(null)
+      return
+    }
+
+    const timeoutId = setTimeout(() => {
+      checkHandleAvailability(handle)
+    }, 500)
+
+    return () => clearTimeout(timeoutId)
+  }, [handle, defaultHandle])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
