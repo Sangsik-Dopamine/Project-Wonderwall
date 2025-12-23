@@ -50,10 +50,12 @@ export async function GET(request: NextRequest) {
     if (existingUser) {
       // 기존 사용자: 토큰만 업데이트 (관리자 클라이언트 사용)
       const adminClient = createAdminClient()
+      const encryptionKey = process.env.SUPABASE_ENCRYPTION_KEY!
       await adminClient.rpc('save_encrypted_tokens', {
         p_user_id: existingUser.id,
         p_access_token: tokens.accessToken,
         p_refresh_token: tokens.refreshToken,
+        p_encryption_key: encryptionKey,
       })
 
       // 세션 쿠키 설정
@@ -108,10 +110,12 @@ export async function GET(request: NextRequest) {
       }
 
       // 토큰 저장 (관리자 클라이언트 사용)
+      const encryptionKey = process.env.SUPABASE_ENCRYPTION_KEY!
       await adminClient.rpc('save_encrypted_tokens', {
         p_user_id: userId,
         p_access_token: tokens.accessToken,
         p_refresh_token: tokens.refreshToken,
+        p_encryption_key: encryptionKey,
       })
 
       // 세션 쿠키 설정

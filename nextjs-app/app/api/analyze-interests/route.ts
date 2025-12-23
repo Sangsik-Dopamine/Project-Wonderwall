@@ -34,9 +34,13 @@ export async function POST(request: NextRequest) {
 
     // 3. 저장된 액세스 토큰 가져오기 (관리자 클라이언트 사용)
     const adminClient = createAdminClient()
+    const encryptionKey = process.env.SUPABASE_ENCRYPTION_KEY!
     const { data: tokenData, error: tokenError } = await adminClient.rpc(
       'get_decrypted_tokens',
-      { p_user_id: user.id }
+      {
+        p_user_id: user.id,
+        p_encryption_key: encryptionKey
+      }
     )
 
     if (tokenError || !tokenData) {
