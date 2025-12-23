@@ -34,14 +34,23 @@ export async function POST(request: NextRequest) {
     const anthropic = new Anthropic({ apiKey })
 
     console.log('Total channels:', subscriptionData.channels?.length || 0)
+
+    // 채널 데이터 간소화 (title만 사용) - API 토큰 제한 방지
+    const simplifiedData = {
+      channels: subscriptionData.channels?.map((channel: any) => ({
+        title: channel.title
+      })) || []
+    }
+
     console.log('Calling Claude API for keyword extraction...')
+    console.log('Analyzing channels:', simplifiedData.channels.length)
 
     // 프롬프트 생성
-    const systemPrompt = `너는 유튜브 구독 채널 데이터를 분석해서 사용자의 관심사를 파악하는 전문가야. 채널 정보를 보고 각 채널의 핵심 주제를 3개의 키워드로 추출해줘.`
+    const systemPrompt = `너는 유튜브 구독 채널 데이터를 분석해서 사용자의 관심사를 파악하는 전문가야. 채널 제목을 보고 각 채널의 핵심 주제를 3개의 키워드로 추출해줘.`
 
-    const userPrompt = `다음은 JSON 형식의 유튜브 채널 리스트이다. 각 채널의 특징을 분석해서 채널당 3개의 핵심 키워드를 추출해줘. 다른 설명은 생략하고 오직 추출된 키워드들만 콤마(,)로 구분된 형식으로 나열해줘.
+    const userPrompt = `다음은 유튜브 채널 제목 리스트이다. 각 채널의 특징을 분석해서 채널당 3개의 핵심 키워드를 추출해줘. 다른 설명은 생략하고 오직 추출된 키워드들만 콤마(,)로 구분된 형식으로 나열해줘.
 
-${JSON.stringify(subscriptionData, null, 2)}`
+${JSON.stringify(simplifiedData, null, 2)}`
 
     console.log('Prompt length:', userPrompt.length, 'characters')
 
