@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server'
-import { GoogleGenAI } from '@google/genai'
+import Anthropic from '@anthropic-ai/sdk'
 
 // Vercel function timeout 설정 (Pro plan 이상 필요)
 export const maxDuration = 300 // 5분
@@ -18,12 +18,12 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Gemini API 초기화
-    const apiKey = process.env.GEMINI_API_KEY
+    // Anthropic API 초기화
+    const apiKey = process.env.ANTHROPIC_API_KEY
     if (!apiKey) {
-      console.error('GEMINI_API_KEY is not set')
+      console.error('ANTHROPIC_API_KEY is not set')
       return new Response(
-        JSON.stringify({ error: 'Gemini API key is not configured' }),
+        JSON.stringify({ error: 'Anthropic API key is not configured' }),
         {
           status: 500,
           headers: { 'Content-Type': 'application/json' }
@@ -31,55 +31,47 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const ai = new GoogleGenAI({ apiKey })
+    const anthropic = new Anthropic({ apiKey })
 
     console.log('Total channels:', subscriptionData.channels?.length || 0)
+    console.log('Calling Claude API for keyword extraction...')
 
     // 프롬프트 생성
-    const prompt = `다음은 JSON 형식의 유튜브 채널 리스트이다. 각 채널의 특징을 분석해서 채널당 3개의 핵심 키워드를 추출해라. 다른 설명은 생략하고 오직 추출된 키워드들만 콤마(,)로 구분된 마크다운 형식으로 나열해라.
+    const systemPrompt = `너는 유튜브 구독 채널 데이터를 분석해서 사용자의 관심사를 파악하는 전문가야. 채널 정보를 보고 각 채널의 핵심 주제를 3개의 키워드로 추출해줘.`
+
+    const userPrompt = `다음은 JSON 형식의 유튜브 채널 리스트이다. 각 채널의 특징을 분석해서 채널당 3개의 핵심 키워드를 추출해줘. 다른 설명은 생략하고 오직 추출된 키워드들만 콤마(,)로 구분된 형식으로 나열해줘.
 
 ${JSON.stringify(subscriptionData, null, 2)}`
 
-    console.log('Calling Gemini API with streaming...')
-    console.log('Prompt length:', prompt.length, 'characters')
+    console.log('Prompt length:', userPrompt.length, 'characters')
 
     // 스트리밍 응답 생성
     const encoder = new TextEncoder()
     const stream = new ReadableStream({
       async start(controller) {
         try {
-          // Gemini API 스트리밍 호출 (thinking mode 활성화)
-          const response = await ai.models.generateContentStream({
-            model: 'gemini-2.5-flash',
-            contents: prompt,
+          // Claude API 스트리밍 호출
+          const streamResponse = await anthropic.messages.stream({
+            model: 'claude-sonnet-4-5-20250929',
+            max_tokens: 8192,
+            temperature: 0.7,
+            system: systemPrompt,
+            messages: [{ role: 'user', content: userPrompt }],
           })
 
-          // 스트리밍 응답 처리 (response를 직접 iterate)
-          for await (const chunk of response) {
-            // 사고 과정과 최종 텍스트를 구분하여 전송
-            const data: any = {
-              text: chunk.text || '',
-              thoughts: '',
-            }
-
-            // 사고 과정 추출
-            if (chunk.candidates?.[0]?.content?.parts) {
-              const parts = chunk.candidates[0].content.parts
-              for (const part of parts) {
-                if (part.thought) {
-                  data.thoughts = part.text || ''
+          // 스트리밍 응답 처리
+          for await (const chunk of streamResponse) {
+            if (chunk.type === 'content_block_delta' &&
+                chunk.delta.type === 'text_delta') {
+              const content = chunk.delta.text
+              if (content) {
+                const data = { text: content, thoughts: '' }
+                try {
+                  controller.enqueue(encoder.encode(JSON.stringify(data) + '\n'))
+                } catch (err) {
+                  console.log('Stream already closed, stopping...')
+                  break
                 }
-              }
-            }
-
-            // JSON 형식으로 전송 (프론트엔드에서 파싱)
-            if (data.text || data.thoughts) {
-              try {
-                controller.enqueue(encoder.encode(JSON.stringify(data) + '\n'))
-              } catch (err) {
-                // Controller가 이미 닫혔으면 무시
-                console.log('Stream already closed, stopping...')
-                break
               }
             }
           }
