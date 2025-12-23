@@ -54,10 +54,19 @@ export async function GET(request: NextRequest) {
         p_refresh_token: tokens.refreshToken,
       })
 
-      // 사용자 페이지로 리다이렉트
-      return NextResponse.redirect(
+      // 세션 쿠키 설정
+      const response = NextResponse.redirect(
         new URL(`/@${existingUser.handle}`, request.url)
       )
+      response.cookies.set('user_google_id', userInfo.googleId, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        maxAge: 60 * 60 * 24 * 7, // 7일
+        path: '/',
+      })
+
+      return response
     } else {
       // 새 사용자: handle 생성 필요
       // handle은 이메일의 @ 앞부분을 기본값으로 사용
@@ -102,10 +111,19 @@ export async function GET(request: NextRequest) {
         p_refresh_token: tokens.refreshToken,
       })
 
-      // 온보딩 페이지로 리다이렉트 (handle 커스터마이징 가능)
-      return NextResponse.redirect(
+      // 세션 쿠키 설정
+      const response = NextResponse.redirect(
         new URL(`/onboarding?handle=${handle}`, request.url)
       )
+      response.cookies.set('user_google_id', userInfo.googleId, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        maxAge: 60 * 60 * 24 * 7, // 7일
+        path: '/',
+      })
+
+      return response
     }
   } catch (err) {
     console.error('OAuth callback error:', err)
