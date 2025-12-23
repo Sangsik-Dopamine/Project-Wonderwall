@@ -46,40 +46,49 @@ export default function AnalyzeButton() {
       // 2. Gemini API로 키워드 추출 (스트리밍)
       setIsExtractingKeywords(true)
 
-      const keywordResponse = await fetch('/api/analyze-keywords', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          subscriptionData: data.subscriptionData,
-        }),
-      })
-
-      if (!keywordResponse.ok) {
-        const errorData = await keywordResponse.json()
-        setError(errorData.error || '키워드 추출 중 오류가 발생했습니다')
-        setIsExtractingKeywords(false)
-        return
-      }
-
-      // 스트리밍 응답 처리
-      const reader = keywordResponse.body?.getReader()
-      const decoder = new TextDecoder()
-
-      if (!reader) {
-        setError('스트리밍을 시작할 수 없습니다')
-        setIsExtractingKeywords(false)
-        return
-      }
-
-      let accumulatedText = ''
+      // 타임아웃 설정 (60초)
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 60000)
 
       try {
+        const keywordResponse = await fetch('/api/analyze-keywords', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            subscriptionData: data.subscriptionData,
+          }),
+          signal: controller.signal,
+        })
+
+        clearTimeout(timeoutId)
+
+        if (!keywordResponse.ok) {
+          const errorData = await keywordResponse.json()
+          setError(errorData.error || '키워드 추출 중 오류가 발생했습니다')
+          setIsExtractingKeywords(false)
+          return
+        }
+
+        // 스트리밍 응답 처리
+        const reader = keywordResponse.body?.getReader()
+        const decoder = new TextDecoder()
+
+        if (!reader) {
+          setError('스트리밍을 시작할 수 없습니다')
+          setIsExtractingKeywords(false)
+          return
+        }
+
+        let accumulatedText = ''
+        let lastUpdateTime = Date.now()
+
         while (true) {
           const { done, value } = await reader.read()
 
           if (done) {
+            console.log('스트리밍 완료!')
             break
           }
 
@@ -89,10 +98,22 @@ export default function AnalyzeButton() {
 
           // 실시간으로 키워드 업데이트
           setKeywords(accumulatedText)
+
+          // 진행 상황 로깅
+          const now = Date.now()
+          if (now - lastUpdateTime > 1000) {
+            console.log('수신된 텍스트 길이:', accumulatedText.length)
+            lastUpdateTime = now
+          }
         }
-      } catch (streamError) {
+      } catch (streamError: any) {
         console.error('Streaming error:', streamError)
-        setError('스트리밍 중 오류가 발생했습니다')
+        if (streamError.name === 'AbortError') {
+          setError('요청 시간이 초과되었습니다. 채널 수가 너무 많을 수 있습니다.')
+        } else {
+          setError('스트리밍 중 오류가 발생했습니다: ' + streamError.message)
+        }
+        setIsExtractingKeywords(false)
       }
     } catch (err) {
       setError('네트워크 오류가 발생했습니다')
