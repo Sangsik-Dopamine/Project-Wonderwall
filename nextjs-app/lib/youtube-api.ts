@@ -3,11 +3,8 @@
  */
 
 export interface YouTubeChannel {
-  channelId: string
   title: string
   description: string
-  subscribedAt: string
-  thumbnailUrl?: string
 }
 
 export interface SubscriptionData {
@@ -51,14 +48,11 @@ export async function getYouTubeSubscriptions(
 
       const data = await response.json()
 
-      // 구독 채널 정보 추출
+      // 구독 채널 정보 추출 (title과 description만)
       for (const item of data.items || []) {
         channels.push({
-          channelId: item.snippet.resourceId.channelId,
           title: item.snippet.title,
           description: item.snippet.description || '',
-          subscribedAt: item.snippet.publishedAt,
-          thumbnailUrl: item.snippet.thumbnails?.default?.url,
         })
       }
 
