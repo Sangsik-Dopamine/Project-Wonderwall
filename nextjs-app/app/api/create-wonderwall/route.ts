@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server'
-import OpenAI from 'openai'
+import Anthropic from '@anthropic-ai/sdk'
 
 export async function POST(request: NextRequest) {
   try {
@@ -15,12 +15,12 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // OpenAI API 초기화
-    const apiKey = process.env.OPENAI_API_KEY
+    // Anthropic API 초기화
+    const apiKey = process.env.ANTHROPIC_API_KEY
     if (!apiKey) {
-      console.error('OPENAI_API_KEY is not set')
+      console.error('ANTHROPIC_API_KEY is not set')
       return new Response(
-        JSON.stringify({ error: 'OpenAI API key is not configured' }),
+        JSON.stringify({ error: 'Anthropic API key is not configured' }),
         {
           status: 500,
           headers: { 'Content-Type': 'application/json' }
@@ -28,9 +28,9 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const openai = new OpenAI({ apiKey })
+    const anthropic = new Anthropic({ apiKey })
 
-    console.log('Creating Wonderwall essay with GPT-4o...')
+    console.log('Creating Wonderwall essay with Claude 3.5 Sonnet...')
     console.log('Keywords length:', keywords.length, 'characters')
 
     // 프롬프트 생성
@@ -56,28 +56,31 @@ ${keywords}`
     const stream = new ReadableStream({
       async start(controller) {
         try {
-          // OpenAI API 스트리밍 호출
-          const completion = await openai.chat.completions.create({
-            model: 'gpt-4o',
+          // Claude API 스트리밍 호출
+          const streamResponse = await anthropic.messages.stream({
+            model: 'claude-3-5-sonnet-20241022',
+            max_tokens: 4096,
+            temperature: 0.8,
+            system: systemPrompt,
             messages: [
-              { role: 'system', content: systemPrompt },
               { role: 'user', content: userPrompt }
             ],
-            stream: true,
-            temperature: 0.8,
           })
 
           // 스트리밍 응답 처리
-          for await (const chunk of completion) {
-            const content = chunk.choices[0]?.delta?.content || ''
+          for await (const chunk of streamResponse) {
+            if (chunk.type === 'content_block_delta' &&
+                chunk.delta.type === 'text_delta') {
+              const content = chunk.delta.text
 
-            if (content) {
-              // 간단한 JSON 형식으로 전송 (thoughts는 비어있음)
-              const data = {
-                text: content,
-                thoughts: '',
+              if (content) {
+                // 간단한 JSON 형식으로 전송 (thoughts는 비어있음)
+                const data = {
+                  text: content,
+                  thoughts: '',
+                }
+                controller.enqueue(encoder.encode(JSON.stringify(data) + '\n'))
               }
-              controller.enqueue(encoder.encode(JSON.stringify(data) + '\n'))
             }
           }
 
