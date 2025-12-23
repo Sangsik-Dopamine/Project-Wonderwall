@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { exchangeCodeForTokens, getGoogleUserInfo } from '@/lib/google-oauth'
 import { createClient } from '@/utils/supabase/server'
+import { createAdminClient } from '@/utils/supabase/admin'
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams
@@ -47,8 +48,9 @@ export async function GET(request: NextRequest) {
       .single()
 
     if (existingUser) {
-      // 기존 사용자: 토큰만 업데이트
-      await supabase.rpc('save_encrypted_tokens', {
+      // 기존 사용자: 토큰만 업데이트 (관리자 클라이언트 사용)
+      const adminClient = createAdminClient()
+      await adminClient.rpc('save_encrypted_tokens', {
         p_user_id: existingUser.id,
         p_access_token: tokens.accessToken,
         p_refresh_token: tokens.refreshToken,
@@ -87,10 +89,11 @@ export async function GET(request: NextRequest) {
         suffix++
       }
 
-      // 새 사용자 생성
+      // 새 사용자 생성 (관리자 클라이언트 사용)
+      const adminClient = createAdminClient()
       const userId = crypto.randomUUID()
 
-      const { error: insertError } = await supabase.from('users').insert({
+      const { error: insertError } = await adminClient.from('users').insert({
         id: userId,
         email: userInfo.email,
         google_id: userInfo.googleId,
@@ -104,8 +107,8 @@ export async function GET(request: NextRequest) {
         )
       }
 
-      // 토큰 저장
-      await supabase.rpc('save_encrypted_tokens', {
+      // 토큰 저장 (관리자 클라이언트 사용)
+      await adminClient.rpc('save_encrypted_tokens', {
         p_user_id: userId,
         p_access_token: tokens.accessToken,
         p_refresh_token: tokens.refreshToken,
