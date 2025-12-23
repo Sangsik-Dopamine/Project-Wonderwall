@@ -58,7 +58,7 @@ export async function GET(request: NextRequest) {
 
       // 세션 쿠키 설정
       const response = NextResponse.redirect(
-        new URL(`/@${existingUser.handle}`, request.url)
+        new URL(`/${existingUser.handle}`, request.url)
       )
       response.cookies.set('user_google_id', userInfo.googleId, {
         httpOnly: true,
