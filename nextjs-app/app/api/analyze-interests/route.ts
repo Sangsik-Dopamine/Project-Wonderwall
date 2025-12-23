@@ -43,6 +43,12 @@ export async function POST(request: NextRequest) {
       }
     )
 
+    console.log('Token data retrieved:', {
+      hasData: !!tokenData,
+      dataType: Array.isArray(tokenData) ? 'array' : typeof tokenData,
+      dataLength: Array.isArray(tokenData) ? tokenData.length : 'N/A',
+    })
+
     if (tokenError || !tokenData) {
       console.error('Failed to get tokens:', tokenError)
       return NextResponse.json(
@@ -51,10 +57,27 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // RPC 함수는 배열로 반환하므로 첫 번째 요소 가져오기
+    const tokens = Array.isArray(tokenData) ? tokenData[0] : tokenData
+
+    if (!tokens || !tokens.access_token) {
+      console.error('No valid tokens found:', tokens)
+      return NextResponse.json(
+        { error: 'No valid access token found' },
+        { status: 500 }
+      )
+    }
+
+    console.log('Access token retrieved:', {
+      hasToken: !!tokens.access_token,
+      tokenLength: tokens.access_token?.length,
+      tokenPrefix: tokens.access_token?.substring(0, 20) + '...',
+    })
+
     // 4. YouTube 구독 정보 가져오기
     console.log('Fetching YouTube subscriptions...')
     const subscriptionData = await getYouTubeSubscriptions(
-      tokenData.access_token
+      tokens.access_token
     )
 
     console.log(`Retrieved ${subscriptionData.totalSubscriptions} subscriptions`)
