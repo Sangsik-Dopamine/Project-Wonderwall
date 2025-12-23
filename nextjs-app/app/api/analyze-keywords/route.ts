@@ -45,18 +45,39 @@ ${JSON.stringify(subscriptionData, null, 2)}`
     const stream = new ReadableStream({
       async start(controller) {
         try {
-          // Gemini API 스트리밍 호출
+          // Gemini API 스트리밍 호출 (thinking mode 활성화)
           const response = await ai.models.generateContentStream({
             model: 'gemini-2.5-flash',
             contents: prompt,
+            config: {
+              thinkingConfig: {
+                thinkingBudget: -1, // 동적 thinking (복잡도에 따라 자동 조절)
+                includeThoughts: true, // 사고 과정 포함
+              },
+            },
           })
 
           // 스트리밍 응답 처리 (response를 직접 iterate)
           for await (const chunk of response) {
-            const text = chunk.text
-            if (text) {
-              // 각 청크를 클라이언트로 전송
-              controller.enqueue(encoder.encode(text))
+            // 사고 과정과 최종 텍스트를 구분하여 전송
+            const data: any = {
+              text: chunk.text || '',
+              thoughts: '',
+            }
+
+            // 사고 과정 추출
+            if (chunk.candidates?.[0]?.content?.parts) {
+              const parts = chunk.candidates[0].content.parts
+              for (const part of parts) {
+                if (part.thought) {
+                  data.thoughts = part.text || ''
+                }
+              }
+            }
+
+            // JSON 형식으로 전송 (프론트엔드에서 파싱)
+            if (data.text || data.thoughts) {
+              controller.enqueue(encoder.encode(JSON.stringify(data) + '\n'))
             }
           }
 

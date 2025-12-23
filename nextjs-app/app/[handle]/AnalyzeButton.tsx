@@ -13,6 +13,7 @@ export default function AnalyzeButton() {
     subscriptionData?: any
   } | null>(null)
   const [keywords, setKeywords] = useState('')
+  const [thoughts, setThoughts] = useState('') // AI 사고 과정
   const [error, setError] = useState('')
 
   const handleAnalyze = async () => {
@@ -20,6 +21,7 @@ export default function AnalyzeButton() {
     setError('')
     setResult(null)
     setKeywords('')
+    setThoughts('')
 
     try {
       // 1. JSON 파일 생성 및 저장
@@ -81,7 +83,9 @@ export default function AnalyzeButton() {
           return
         }
 
-        let accumulatedText = ''
+        let accumulatedKeywords = ''
+        let accumulatedThoughts = ''
+        let buffer = ''
         let lastUpdateTime = Date.now()
 
         while (true) {
@@ -94,15 +98,38 @@ export default function AnalyzeButton() {
 
           // 청크를 디코딩하여 텍스트로 변환
           const chunk = decoder.decode(value, { stream: true })
-          accumulatedText += chunk
+          buffer += chunk
 
-          // 실시간으로 키워드 업데이트
-          setKeywords(accumulatedText)
+          // 개행 문자로 구분된 JSON 파싱
+          const lines = buffer.split('\n')
+          buffer = lines.pop() || '' // 마지막 불완전한 줄은 버퍼에 보관
+
+          for (const line of lines) {
+            if (line.trim()) {
+              try {
+                const data = JSON.parse(line)
+
+                // 사고 과정 누적
+                if (data.thoughts) {
+                  accumulatedThoughts += data.thoughts
+                  setThoughts(accumulatedThoughts)
+                }
+
+                // 최종 키워드 누적
+                if (data.text) {
+                  accumulatedKeywords += data.text
+                  setKeywords(accumulatedKeywords)
+                }
+              } catch (e) {
+                console.error('JSON 파싱 에러:', e)
+              }
+            }
+          }
 
           // 진행 상황 로깅
           const now = Date.now()
           if (now - lastUpdateTime > 1000) {
-            console.log('수신된 텍스트 길이:', accumulatedText.length)
+            console.log('수신된 사고 과정:', accumulatedThoughts.length, '키워드:', accumulatedKeywords.length)
             lastUpdateTime = now
           }
         }
@@ -224,6 +251,25 @@ export default function AnalyzeButton() {
               📥 JSON 파일 다운로드
             </button>
           </div>
+
+          {/* AI 사고 과정 (Reasoning) */}
+          {thoughts && (
+            <div className="p-6 bg-white rounded-xl shadow-lg border-2 border-blue-200">
+              <div className="text-center mb-4">
+                <div className="text-4xl mb-2">🧠</div>
+                <h3 className="text-lg font-bold text-gray-900">AI 사고 과정</h3>
+                <p className="text-sm text-gray-600 mt-1">
+                  Gemini가 생각하는 과정을 실시간으로 확인하세요
+                </p>
+              </div>
+
+              <div className="bg-blue-50 rounded-lg p-6 max-h-96 overflow-y-auto">
+                <div className="text-sm text-gray-700 whitespace-pre-wrap font-mono">
+                  {thoughts}
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* 키워드 추출 결과 */}
           {keywords && (
