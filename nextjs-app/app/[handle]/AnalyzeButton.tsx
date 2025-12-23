@@ -43,7 +43,7 @@ export default function AnalyzeButton() {
 
       setIsAnalyzing(false)
 
-      // 2. Gemini API로 키워드 추출
+      // 2. Gemini API로 키워드 추출 (스트리밍)
       setIsExtractingKeywords(true)
 
       const keywordResponse = await fetch('/api/analyze-keywords', {
@@ -56,12 +56,43 @@ export default function AnalyzeButton() {
         }),
       })
 
-      const keywordData = await keywordResponse.json()
+      if (!keywordResponse.ok) {
+        const errorData = await keywordResponse.json()
+        setError(errorData.error || '키워드 추출 중 오류가 발생했습니다')
+        setIsExtractingKeywords(false)
+        return
+      }
 
-      if (keywordResponse.ok) {
-        setKeywords(keywordData.keywords)
-      } else {
-        setError(keywordData.error || '키워드 추출 중 오류가 발생했습니다')
+      // 스트리밍 응답 처리
+      const reader = keywordResponse.body?.getReader()
+      const decoder = new TextDecoder()
+
+      if (!reader) {
+        setError('스트리밍을 시작할 수 없습니다')
+        setIsExtractingKeywords(false)
+        return
+      }
+
+      let accumulatedText = ''
+
+      try {
+        while (true) {
+          const { done, value } = await reader.read()
+
+          if (done) {
+            break
+          }
+
+          // 청크를 디코딩하여 텍스트로 변환
+          const chunk = decoder.decode(value, { stream: true })
+          accumulatedText += chunk
+
+          // 실시간으로 키워드 업데이트
+          setKeywords(accumulatedText)
+        }
+      } catch (streamError) {
+        console.error('Streaming error:', streamError)
+        setError('스트리밍 중 오류가 발생했습니다')
       }
     } catch (err) {
       setError('네트워크 오류가 발생했습니다')

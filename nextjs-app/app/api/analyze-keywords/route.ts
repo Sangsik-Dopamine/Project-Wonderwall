@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
 import { GoogleGenAI } from '@google/genai'
 
 export async function POST(request: NextRequest) {
@@ -6,9 +6,12 @@ export async function POST(request: NextRequest) {
     const { subscriptionData } = await request.json()
 
     if (!subscriptionData) {
-      return NextResponse.json(
-        { error: 'Subscription data is required' },
-        { status: 400 }
+      return new Response(
+        JSON.stringify({ error: 'Subscription data is required' }),
+        {
+          status: 400,
+          headers: { 'Content-Type': 'application/json' }
+        }
       )
     }
 
@@ -16,9 +19,12 @@ export async function POST(request: NextRequest) {
     const apiKey = process.env.GEMINI_API_KEY
     if (!apiKey) {
       console.error('GEMINI_API_KEY is not set')
-      return NextResponse.json(
-        { error: 'Gemini API key is not configured' },
-        { status: 500 }
+      return new Response(
+        JSON.stringify({ error: 'Gemini API key is not configured' }),
+        {
+          status: 500,
+          headers: { 'Content-Type': 'application/json' }
+        }
       )
     }
 
@@ -29,29 +35,53 @@ export async function POST(request: NextRequest) {
 
 ${JSON.stringify(subscriptionData, null, 2)}`
 
-    console.log('Calling Gemini API...')
+    console.log('Calling Gemini API with streaming...')
     console.log('Total channels:', subscriptionData.channels?.length || 0)
 
-    // Gemini API 호출 (새로운 API 형식)
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: prompt,
+    // 스트리밍 응답 생성
+    const encoder = new TextEncoder()
+    const stream = new ReadableStream({
+      async start(controller) {
+        try {
+          // Gemini API 스트리밍 호출
+          const result = await ai.models.generateContentStream({
+            model: 'gemini-2.5-flash',
+            contents: prompt,
+          })
+
+          // 스트리밍 응답 처리
+          for await (const chunk of result.stream) {
+            const text = chunk.text
+            if (text) {
+              // 각 청크를 클라이언트로 전송
+              controller.enqueue(encoder.encode(text))
+            }
+          }
+
+          console.log('Keywords extraction completed')
+          controller.close()
+        } catch (error: any) {
+          console.error('Error during streaming:', error)
+          controller.error(error)
+        }
+      },
     })
 
-    const keywords = response.text
-
-    console.log('Keywords extracted successfully')
-    console.log('Keywords length:', keywords.length)
-
-    return NextResponse.json({
-      success: true,
-      keywords,
+    // 스트리밍 응답 반환
+    return new Response(stream, {
+      headers: {
+        'Content-Type': 'text/plain; charset=utf-8',
+        'Transfer-Encoding': 'chunked',
+      },
     })
   } catch (error: any) {
     console.error('Error in analyze-keywords:', error)
-    return NextResponse.json(
-      { error: error.message || 'Internal server error' },
-      { status: 500 }
+    return new Response(
+      JSON.stringify({ error: error.message || 'Internal server error' }),
+      {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' }
+      }
     )
   }
 }
