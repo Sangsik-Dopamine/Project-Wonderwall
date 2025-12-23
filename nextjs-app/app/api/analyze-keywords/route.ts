@@ -77,7 +77,13 @@ ${JSON.stringify(subscriptionData, null, 2)}`
 
             // JSON 형식으로 전송 (프론트엔드에서 파싱)
             if (data.text || data.thoughts) {
-              controller.enqueue(encoder.encode(JSON.stringify(data) + '\n'))
+              try {
+                controller.enqueue(encoder.encode(JSON.stringify(data) + '\n'))
+              } catch (err) {
+                // Controller가 이미 닫혔으면 무시
+                console.log('Stream already closed, stopping...')
+                break
+              }
             }
           }
 
