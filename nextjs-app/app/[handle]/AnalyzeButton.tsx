@@ -119,6 +119,8 @@ export default function AnalyzeButton() {
                 if (data.text) {
                   accumulatedKeywords += data.text
                   setKeywords(accumulatedKeywords)
+                  // localStorage에 저장 (Wonderwall 페이지에서 사용)
+                  localStorage.setItem('extractedKeywords', accumulatedKeywords)
                 }
               } catch (e) {
                 console.error('JSON 파싱 에러:', e)
