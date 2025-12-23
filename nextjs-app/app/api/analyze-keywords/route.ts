@@ -46,13 +46,13 @@ ${JSON.stringify(subscriptionData, null, 2)}`
       async start(controller) {
         try {
           // Gemini API 스트리밍 호출
-          const result = await ai.models.generateContentStream({
+          const response = await ai.models.generateContentStream({
             model: 'gemini-2.5-flash',
             contents: prompt,
           })
 
-          // 스트리밍 응답 처리
-          for await (const chunk of result.stream) {
+          // 스트리밍 응답 처리 (response를 직접 iterate)
+          for await (const chunk of response) {
             const text = chunk.text
             if (text) {
               // 각 청크를 클라이언트로 전송
