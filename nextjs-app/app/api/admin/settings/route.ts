@@ -1,38 +1,44 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { cookies } from 'next/headers'
 import { createClient } from '@supabase/supabase-js'
+import { checkAdminAuth } from '@/utils/admin-auth'
 
-// Supabase 클라이언트 초기화 (service role key 사용)
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
-const supabase = createClient(supabaseUrl, supabaseServiceKey)
+// 설정 데이터 타입
+interface AdminSettingsData {
+  model?: string
+  api_key?: string
+  system_prompt?: string
+  user_prompt_template?: string
+}
 
-// 인증 체크 헬퍼 함수
-async function checkAuth() {
-  const cookieStore = await cookies()
-  const adminSession = cookieStore.get('admin_session')
-  return adminSession?.value === 'authenticated'
+// Supabase 클라이언트 생성 함수
+function getSupabaseClient() {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
+  return createClient(supabaseUrl, supabaseServiceKey)
 }
 
 // GET: 설정 로드
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
-    // 인증 확인
-    if (!(await checkAuth())) {
+    // 이메일 기반 인증 확인
+    const { isAdmin } = await checkAdminAuth()
+    if (!isAdmin) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    const supabase = getSupabaseClient()
+
     // keywords 설정 조회
-    const { data: keywordsData, error: keywordsError } = await supabase
+    const { data: keywordsData } = await supabase
       .rpc('get_admin_settings', { p_setting_type: 'keywords' })
-      .single()
+      .single() as { data: AdminSettingsData | null }
 
     // wonderwall 설정 조회
-    const { data: wonderwallData, error: wonderwallError } = await supabase
+    const { data: wonderwallData } = await supabase
       .rpc('get_admin_settings', { p_setting_type: 'wonderwall' })
-      .single()
+      .single() as { data: AdminSettingsData | null }
 
-    const result: any = {}
+    const result: Record<string, unknown> = {}
 
     if (keywordsData) {
       result.keywords = {
@@ -53,10 +59,10 @@ export async function GET(request: NextRequest) {
     }
 
     return NextResponse.json(result)
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error loading settings:', error)
     return NextResponse.json(
-      { error: error.message || 'Failed to load settings' },
+      { error: 'Failed to load settings' },
       { status: 500 }
     )
   }
@@ -65,8 +71,9 @@ export async function GET(request: NextRequest) {
 // POST: 설정 저장
 export async function POST(request: NextRequest) {
   try {
-    // 인증 확인
-    if (!(await checkAuth())) {
+    // 이메일 기반 인증 확인
+    const { isAdmin } = await checkAdminAuth()
+    if (!isAdmin) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -86,6 +93,8 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    const supabase = getSupabaseClient()
+
     // RPC 함수를 통해 설정 저장
     const { error } = await supabase.rpc('save_admin_settings', {
       p_setting_type: type,
@@ -104,10 +113,10 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json({ success: true })
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error saving settings:', error)
     return NextResponse.json(
-      { error: error.message || 'Failed to save settings' },
+      { error: 'Failed to save settings' },
       { status: 500 }
     )
   }

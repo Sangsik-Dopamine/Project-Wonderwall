@@ -1,24 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { cookies } from 'next/headers'
 import { createClient } from '@supabase/supabase-js'
+import { checkAdminAuth } from '@/utils/admin-auth'
 import Anthropic from '@anthropic-ai/sdk'
 
-// Supabase 클라이언트 초기화
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
-const supabase = createClient(supabaseUrl, supabaseServiceKey)
+// 설정 데이터 타입
+interface AdminSettingsData {
+  model: string
+  api_key: string
+}
 
-// 인증 체크 헬퍼 함수
-async function checkAuth() {
-  const cookieStore = await cookies()
-  const adminSession = cookieStore.get('admin_session')
-  return adminSession?.value === 'authenticated'
+// Supabase 클라이언트 생성 함수
+function getSupabaseClient() {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
+  return createClient(supabaseUrl, supabaseServiceKey)
 }
 
 export async function POST(request: NextRequest) {
   try {
-    // 인증 확인
-    if (!(await checkAuth())) {
+    // 이메일 기반 인증 확인
+    const { isAdmin } = await checkAdminAuth()
+    if (!isAdmin) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -31,10 +33,12 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    const supabase = getSupabaseClient()
+
     // 설정 조회
     const { data: settingsData, error: settingsError } = await supabase
       .rpc('get_admin_settings', { p_setting_type: type })
-      .single()
+      .single() as { data: AdminSettingsData | null; error: unknown }
 
     if (settingsError || !settingsData) {
       return NextResponse.json(
@@ -43,7 +47,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const { model, api_key: apiKey, system_prompt, user_prompt_template } = settingsData
+    const { model, api_key: apiKey } = settingsData as AdminSettingsData
 
     if (!apiKey) {
       return NextResponse.json(
@@ -54,19 +58,16 @@ export async function POST(request: NextRequest) {
 
     // 모델에 따라 다른 API 호출
     let result = ''
+    const testMessage = '테스트 메시지입니다. "API 테스트 성공"이라고만 답변해주세요.'
 
     if (model.startsWith('claude')) {
       // Anthropic Claude API 테스트
       const anthropic = new Anthropic({ apiKey })
 
-      const testPrompt = type === 'keywords'
-        ? '테스트 메시지입니다. "API 테스트 성공"이라고만 답변해주세요.'
-        : '테스트 메시지입니다. "API 테스트 성공"이라고만 답변해주세요.'
-
       const message = await anthropic.messages.create({
         model: model === 'claude-sonnet-4-5' ? 'claude-sonnet-4-5-20250929' : model,
         max_tokens: 1024,
-        messages: [{ role: 'user', content: testPrompt }],
+        messages: [{ role: 'user', content: testMessage }],
       })
 
       const content = message.content[0]
@@ -83,9 +84,7 @@ export async function POST(request: NextRequest) {
         },
         body: JSON.stringify({
           model: model,
-          messages: [
-            { role: 'user', content: '테스트 메시지입니다. "API 테스트 성공"이라고만 답변해주세요.' }
-          ],
+          messages: [{ role: 'user', content: testMessage }],
           max_tokens: 100,
         }),
       })
@@ -105,9 +104,7 @@ export async function POST(request: NextRequest) {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             contents: [{
-              parts: [{
-                text: '테스트 메시지입니다. "API 테스트 성공"이라고만 답변해주세요.'
-              }]
+              parts: [{ text: testMessage }]
             }]
           }),
         }
@@ -127,10 +124,10 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json({ success: true, result })
-  } catch (error: any) {
+  } catch (error) {
     console.error('API test error:', error)
     return NextResponse.json(
-      { error: error.message || 'API test failed' },
+      { error: error instanceof Error ? error.message : 'API test failed' },
       { status: 500 }
     )
   }

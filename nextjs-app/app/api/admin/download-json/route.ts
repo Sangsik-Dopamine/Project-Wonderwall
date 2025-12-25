@@ -1,23 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { cookies } from 'next/headers'
 import { createClient } from '@supabase/supabase-js'
+import { checkAdminAuth } from '@/utils/admin-auth'
 
-// Supabase 클라이언트 초기화 (service role key 사용)
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
-const supabase = createClient(supabaseUrl, supabaseServiceKey)
-
-// 인증 체크 헬퍼 함수
-async function checkAuth() {
-  const cookieStore = await cookies()
-  const adminSession = cookieStore.get('admin_session')
-  return adminSession?.value === 'authenticated'
+// Supabase 클라이언트 생성 함수
+function getSupabaseClient() {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
+  return createClient(supabaseUrl, supabaseServiceKey)
 }
 
 export async function GET(request: NextRequest) {
   try {
-    // 인증 확인
-    if (!(await checkAuth())) {
+    // 이메일 기반 인증 확인
+    const { isAdmin } = await checkAdminAuth()
+    if (!isAdmin) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -31,6 +27,8 @@ export async function GET(request: NextRequest) {
         { status: 400 }
       )
     }
+
+    const supabase = getSupabaseClient()
 
     // 사용자의 raw_data 조회
     const { data: user, error } = await supabase
@@ -65,10 +63,10 @@ export async function GET(request: NextRequest) {
         'Content-Disposition': `attachment; filename="${filename}"`,
       },
     })
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error downloading JSON:', error)
     return NextResponse.json(
-      { error: error.message || 'Failed to download JSON' },
+      { error: 'Failed to download JSON' },
       { status: 500 }
     )
   }
