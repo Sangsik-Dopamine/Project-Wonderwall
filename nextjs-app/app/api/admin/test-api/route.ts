@@ -3,10 +3,18 @@ import { createClient } from '@supabase/supabase-js'
 import { checkAdminAuth } from '@/utils/admin-auth'
 import Anthropic from '@anthropic-ai/sdk'
 
-// Supabase 클라이언트 초기화
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
-const supabase = createClient(supabaseUrl, supabaseServiceKey)
+// 설정 데이터 타입
+interface AdminSettingsData {
+  model: string
+  api_key: string
+}
+
+// Supabase 클라이언트 생성 함수
+function getSupabaseClient() {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
+  return createClient(supabaseUrl, supabaseServiceKey)
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -25,10 +33,12 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    const supabase = getSupabaseClient()
+
     // 설정 조회
     const { data: settingsData, error: settingsError } = await supabase
       .rpc('get_admin_settings', { p_setting_type: type })
-      .single()
+      .single() as { data: AdminSettingsData | null; error: unknown }
 
     if (settingsError || !settingsData) {
       return NextResponse.json(
@@ -37,7 +47,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const { model, api_key: apiKey } = settingsData
+    const { model, api_key: apiKey } = settingsData as AdminSettingsData
 
     if (!apiKey) {
       return NextResponse.json(

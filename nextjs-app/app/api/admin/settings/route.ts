@@ -2,10 +2,20 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { checkAdminAuth } from '@/utils/admin-auth'
 
-// Supabase 클라이언트 초기화 (service role key 사용)
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
-const supabase = createClient(supabaseUrl, supabaseServiceKey)
+// 설정 데이터 타입
+interface AdminSettingsData {
+  model?: string
+  api_key?: string
+  system_prompt?: string
+  user_prompt_template?: string
+}
+
+// Supabase 클라이언트 생성 함수
+function getSupabaseClient() {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
+  return createClient(supabaseUrl, supabaseServiceKey)
+}
 
 // GET: 설정 로드
 export async function GET() {
@@ -16,15 +26,17 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    const supabase = getSupabaseClient()
+
     // keywords 설정 조회
     const { data: keywordsData } = await supabase
       .rpc('get_admin_settings', { p_setting_type: 'keywords' })
-      .single()
+      .single() as { data: AdminSettingsData | null }
 
     // wonderwall 설정 조회
     const { data: wonderwallData } = await supabase
       .rpc('get_admin_settings', { p_setting_type: 'wonderwall' })
-      .single()
+      .single() as { data: AdminSettingsData | null }
 
     const result: Record<string, unknown> = {}
 
@@ -80,6 +92,8 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       )
     }
+
+    const supabase = getSupabaseClient()
 
     // RPC 함수를 통해 설정 저장
     const { error } = await supabase.rpc('save_admin_settings', {
