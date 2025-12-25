@@ -1,16 +1,15 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { cookies } from 'next/headers'
+import { NextResponse } from 'next/server'
+import { checkAdminAuth } from '@/utils/admin-auth'
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
-    const cookieStore = await cookies()
-    const adminSession = cookieStore.get('admin_session')
+    const { isAdmin, email } = await checkAdminAuth()
 
-    if (adminSession?.value === 'authenticated') {
-      return NextResponse.json({ authenticated: true })
+    if (isAdmin) {
+      return NextResponse.json({ authenticated: true, isAdmin: true, email })
     } else {
       return NextResponse.json(
-        { error: 'Unauthorized' },
+        { error: 'Unauthorized', isAdmin: false },
         { status: 401 }
       )
     }

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 
 type Settings = {
   model: string
@@ -21,6 +22,7 @@ export default function AdminDashboard() {
   const router = useRouter()
   const [activeTab, setActiveTab] = useState<'keywords' | 'wonderwall' | 'users'>('keywords')
   const [loading, setLoading] = useState(true)
+  const [authorized, setAuthorized] = useState(false)
 
   const [keywordSettings, setKeywordSettings] = useState<Settings>({
     model: 'claude-sonnet-4-5',
@@ -40,18 +42,27 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     checkAuth()
-    loadSettings()
-    loadUsers()
   }, [])
 
   const checkAuth = async () => {
     try {
       const response = await fetch('/api/admin/check-auth')
-      if (!response.ok) {
-        router.push('/admin')
+      if (response.ok) {
+        const data = await response.json()
+        if (data.isAdmin) {
+          setAuthorized(true)
+          loadSettings()
+          loadUsers()
+        } else {
+          // 로그인은 됐지만 어드민이 아닌 경우
+          router.push('/')
+        }
+      } else {
+        // 로그인 안 된 경우
+        router.push('/login')
       }
-    } catch (error) {
-      router.push('/admin')
+    } catch {
+      router.push('/login')
     }
   }
 
@@ -101,7 +112,7 @@ export default function AdminDashboard() {
       } else {
         alert('저장 실패')
       }
-    } catch (error) {
+    } catch {
       alert('저장 중 오류 발생')
     }
   }
@@ -121,7 +132,7 @@ export default function AdminDashboard() {
       } else {
         alert(`API 테스트 실패: ${data.error}`)
       }
-    } catch (error) {
+    } catch {
       alert('API 테스트 중 오류 발생')
     }
   }
@@ -144,7 +155,7 @@ export default function AdminDashboard() {
         const data = await response.json()
         alert(`다운로드 실패: ${data.error}`)
       }
-    } catch (error) {
+    } catch {
       alert('다운로드 중 오류 발생')
     }
   }
@@ -278,7 +289,7 @@ export default function AdminDashboard() {
     )
   }
 
-  if (loading) {
+  if (loading || !authorized) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
         <div className="text-white">로딩 중...</div>
@@ -289,7 +300,15 @@ export default function AdminDashboard() {
   return (
     <div className="min-h-screen bg-black text-white p-8">
       <div className="max-w-6xl mx-auto">
-        <h1 className="text-4xl font-bold mb-8">Wonderwall Admin Dashboard</h1>
+        <div className="flex justify-between items-center mb-8">
+          <h1 className="text-4xl font-bold">Wonderwall Admin Dashboard</h1>
+          <Link
+            href="/"
+            className="px-4 py-2 text-sm bg-gray-800 text-gray-300 rounded-lg hover:bg-gray-700 transition-colors"
+          >
+            홈으로
+          </Link>
+        </div>
 
         <div className="flex gap-4 mb-8">
           <button

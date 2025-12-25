@@ -1,10 +1,39 @@
 'use client'
 
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 
 export default function LandingPage() {
+  const [isAdmin, setIsAdmin] = useState(false)
+
+  useEffect(() => {
+    // 어드민 여부 확인
+    const checkAdmin = async () => {
+      try {
+        const response = await fetch('/api/admin/check-auth')
+        if (response.ok) {
+          const data = await response.json()
+          setIsAdmin(data.isAdmin === true)
+        }
+      } catch {
+        // 로그인 안 된 경우 무시
+      }
+    }
+    checkAdmin()
+  }, [])
+
   return (
     <div className="bg-black text-white snap-y snap-mandatory h-screen overflow-y-scroll">
+      {/* Admin Link - 어드민만 보임 */}
+      {isAdmin && (
+        <Link
+          href="/wonderwall_admin"
+          className="fixed top-4 right-4 z-50 px-4 py-2 text-sm bg-gray-800 text-gray-300 rounded-lg hover:bg-gray-700 transition-colors"
+        >
+          Admin
+        </Link>
+      )}
+
       {/* Section 1 */}
       <section className="min-h-screen flex items-center justify-center snap-start px-6">
         <h1 className="text-4xl md:text-6xl font-bold text-center leading-tight">
