@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { exchangeCodeForTokens, getGoogleUserInfo } from '@/lib/google-oauth'
+import { createClient } from '@/utils/supabase/server'
 import { createAdminClient } from '@/utils/supabase/admin'
 
 export async function GET(request: NextRequest) {
@@ -24,7 +25,6 @@ export async function GET(request: NextRequest) {
   try {
     // 1. Authorization Code를 Access Token으로 교환
     const tokens = await exchangeCodeForTokens(code)
-    console.log('Token exchange successful:', { hasRefreshToken: !!tokens.refreshToken })
 
     // refresh_token이 없으면 에러 (첫 로그인 시 필수)
     if (!tokens.refreshToken) {
@@ -36,147 +36,106 @@ export async function GET(request: NextRequest) {
 
     // 2. Access Token으로 사용자 정보 조회
     const userInfo = await getGoogleUserInfo(tokens.accessToken)
-    console.log('User info retrieved:', { email: userInfo.email, googleId: userInfo.googleId })
 
-    // 3. Supabase Admin Client 생성
-    const adminClient = createAdminClient()
+    // 3. Supabase에서 사용자 처리
+    const supabase = await createClient()
 
-    // 4. 기존 사용자 조회 (maybeSingle로 에러 없이 null 반환)
-    const { data: existingUser, error: queryError } = await adminClient
+    // 3-1. 기존 사용자 확인
+    const { data: existingUser } = await supabase
       .from('users')
       .select('id, handle')
       .eq('google_id', userInfo.googleId)
-      .maybeSingle()
-
-    console.log('Existing user query:', {
-      found: !!existingUser,
-      handle: existingUser?.handle,
-      error: queryError?.message
-    })
-
-    let userId: string
-    let userHandle: string
-    let isNewUser = false
+      .single()
 
     if (existingUser) {
-      // 기존 사용자
-      userId = existingUser.id
-      userHandle = existingUser.handle
+      // 기존 사용자: 토큰만 업데이트 (관리자 클라이언트 사용)
+      const adminClient = createAdminClient()
+      const encryptionKey = process.env.SUPABASE_ENCRYPTION_KEY!
+      await adminClient.rpc('save_encrypted_tokens', {
+        p_user_id: existingUser.id,
+        p_access_token: tokens.accessToken,
+        p_refresh_token: tokens.refreshToken,
+        p_encryption_key: encryptionKey,
+      })
+
+      // 세션 쿠키 설정
+      const response = NextResponse.redirect(
+        new URL(`/${existingUser.handle}`, request.url)
+      )
+      response.cookies.set('user_google_id', userInfo.googleId, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        maxAge: 60 * 60 * 24 * 7, // 7일
+        path: '/',
+      })
+
+      return response
     } else {
-      // 새 사용자 생성
-      isNewUser = true
+      // 새 사용자: handle 생성 필요
+      // handle은 이메일의 @ 앞부분을 기본값으로 사용
+      const defaultHandle = userInfo.email.split('@')[0]
 
-      // handle 생성 (이메일 @ 앞부분)
-      const defaultHandle = userInfo.email.split('@')[0].toLowerCase().replace(/[^a-z0-9_]/g, '')
-
-      // handle 중복 확인
+      // handle 중복 확인 및 유니크하게 생성
       let handle = defaultHandle
       let suffix = 1
       while (true) {
-        const { data: handleExists } = await adminClient
+        const { data: existingHandle } = await supabase
           .from('users')
           .select('id')
           .eq('handle', handle)
-          .maybeSingle()
+          .single()
 
-        if (!handleExists) break
+        if (!existingHandle) break
         handle = `${defaultHandle}${suffix}`
         suffix++
-        if (suffix > 100) {
-          handle = `${defaultHandle}_${Date.now()}`
-          break
-        }
       }
 
-      userId = crypto.randomUUID()
-      userHandle = handle
+      // 새 사용자 생성 (관리자 클라이언트 사용)
+      const adminClient = createAdminClient()
+      const userId = crypto.randomUUID()
 
-      // 새 사용자 삽입
-      const { error: insertError } = await adminClient
-        .from('users')
-        .insert({
-          id: userId,
-          email: userInfo.email,
-          google_id: userInfo.googleId,
-          handle: userHandle,
-        })
+      const { error: insertError } = await adminClient.from('users').insert({
+        id: userId,
+        email: userInfo.email,
+        google_id: userInfo.googleId,
+        handle,
+      })
 
       if (insertError) {
-        console.error('Insert error:', insertError)
-
-        // UNIQUE 에러 시 기존 사용자 재조회
-        if (insertError.code === '23505') {
-          console.log('UNIQUE violation - fetching existing user')
-          const { data: retryUser } = await adminClient
-            .from('users')
-            .select('id, handle')
-            .eq('google_id', userInfo.googleId)
-            .maybeSingle()
-
-          if (retryUser) {
-            userId = retryUser.id
-            userHandle = retryUser.handle
-            isNewUser = false
-          } else {
-            return NextResponse.redirect(
-              new URL(`/login?error=create_failed_${insertError.code}`, request.url)
-            )
-          }
-        } else {
-          return NextResponse.redirect(
-            new URL(`/login?error=create_failed_${insertError.code}`, request.url)
-          )
-        }
+        console.error('Failed to create user:', insertError)
+        return NextResponse.redirect(
+          new URL('/login?error=create_user_failed', request.url)
+        )
       }
+
+      // 토큰 저장 (관리자 클라이언트 사용)
+      const encryptionKey = process.env.SUPABASE_ENCRYPTION_KEY!
+      await adminClient.rpc('save_encrypted_tokens', {
+        p_user_id: userId,
+        p_access_token: tokens.accessToken,
+        p_refresh_token: tokens.refreshToken,
+        p_encryption_key: encryptionKey,
+      })
+
+      // 세션 쿠키 설정
+      const response = NextResponse.redirect(
+        new URL(`/onboarding?handle=${handle}`, request.url)
+      )
+      response.cookies.set('user_google_id', userInfo.googleId, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        maxAge: 60 * 60 * 24 * 7, // 7일
+        path: '/',
+      })
+
+      return response
     }
-
-    // 5. 토큰 암호화 및 저장
-    console.log('Encrypting and saving tokens for user:', userId)
-
-    const { data: encryptedAccess, error: encryptAccessError } = await adminClient.rpc('encrypt_token', {
-      token: tokens.accessToken
-    })
-    const { data: encryptedRefresh, error: encryptRefreshError } = await adminClient.rpc('encrypt_token', {
-      token: tokens.refreshToken
-    })
-
-    if (encryptAccessError || encryptRefreshError) {
-      console.error('Encryption error:', { encryptAccessError, encryptRefreshError })
-      // 암호화 실패해도 로그인은 진행 (토큰만 저장 안 됨)
-    } else {
-      const { error: updateError } = await adminClient
-        .from('users')
-        .update({
-          access_token_encrypted: encryptedAccess,
-          refresh_token_encrypted: encryptedRefresh,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', userId)
-
-      if (updateError) {
-        console.error('Token update error:', updateError)
-        // 업데이트 실패해도 로그인은 진행
-      }
-    }
-
-    // 6. 세션 쿠키 설정 및 리다이렉트
-    const redirectUrl = isNewUser ? `/onboarding?handle=${userHandle}` : `/${userHandle}`
-    console.log('Redirecting to:', redirectUrl)
-
-    const response = NextResponse.redirect(new URL(redirectUrl, request.url))
-    response.cookies.set('user_google_id', userInfo.googleId, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 60 * 60 * 24 * 7, // 7일
-      path: '/',
-    })
-
-    return response
-  } catch (err: any) {
-    console.error('OAuth callback error:', err?.message || err)
+  } catch (err) {
+    console.error('OAuth callback error:', err)
     return NextResponse.redirect(
-      new URL(`/login?error=oauth_failed&detail=${encodeURIComponent(err?.message || 'unknown')}`, request.url)
+      new URL('/login?error=oauth_failed', request.url)
     )
   }
 }

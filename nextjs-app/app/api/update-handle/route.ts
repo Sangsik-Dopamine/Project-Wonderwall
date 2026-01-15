@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createAdminClient } from '@/utils/supabase/admin'
+import { createClient } from '@/utils/supabase/server'
 import { cookies } from 'next/headers'
 
 export async function POST(request: NextRequest) {
@@ -47,10 +47,10 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const adminClient = createAdminClient()
+    const supabase = await createClient()
 
-    // 현재 사용자 조회 (RLS 우회)
-    const { data: currentUser, error: userError } = await adminClient
+    // 현재 사용자 조회
+    const { data: currentUser, error: userError } = await supabase
       .from('users')
       .select('id, handle')
       .eq('google_id', googleId)
@@ -72,7 +72,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Handle 중복 확인
-    const { data: existingHandle } = await adminClient
+    const { data: existingHandle } = await supabase
       .from('users')
       .select('id')
       .eq('handle', handle)
@@ -86,7 +86,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Handle 업데이트
-    const { error: updateError } = await adminClient
+    const { error: updateError } = await supabase
       .from('users')
       .update({ handle })
       .eq('id', currentUser.id)

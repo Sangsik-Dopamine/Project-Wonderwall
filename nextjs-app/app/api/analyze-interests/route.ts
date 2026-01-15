@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
+import { createClient } from '@/utils/supabase/server'
 import { createAdminClient } from '@/utils/supabase/admin'
 import { getYouTubeSubscriptions, generateSubscriptionFilename } from '@/lib/youtube-api'
 import { refreshAccessToken } from '@/lib/google-oauth'
@@ -17,9 +18,9 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // 2. 사용자 정보 조회 (RLS 우회)
-    const adminClient = createAdminClient()
-    const { data: user, error: userError } = await adminClient
+    // 2. 사용자 정보 조회
+    const supabase = await createClient()
+    const { data: user, error: userError } = await supabase
       .from('users')
       .select('id')
       .eq('google_id', googleId)
@@ -32,26 +33,36 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // 3. 저장된 액세스 토큰 가져오기 (decrypt_token RPC로 복호화)
-    const { data: accessTokenData } = await adminClient.rpc('decrypt_token', {
-      encrypted_token: (await adminClient.from('users').select('access_token_encrypted').eq('id', user.id).single()).data?.access_token_encrypted
-    })
-    const { data: refreshTokenData } = await adminClient.rpc('decrypt_token', {
-      encrypted_token: (await adminClient.from('users').select('refresh_token_encrypted').eq('id', user.id).single()).data?.refresh_token_encrypted
-    })
-
-    const tokens = {
-      access_token: accessTokenData,
-      refresh_token: refreshTokenData
-    }
+    // 3. 저장된 액세스 토큰 가져오기 (관리자 클라이언트 사용)
+    const adminClient = createAdminClient()
+    const encryptionKey = process.env.SUPABASE_ENCRYPTION_KEY!
+    const { data: tokenData, error: tokenError } = await adminClient.rpc(
+      'get_decrypted_tokens',
+      {
+        p_user_id: user.id,
+        p_encryption_key: encryptionKey
+      }
+    )
 
     console.log('Token data retrieved:', {
-      hasAccessToken: !!tokens.access_token,
-      hasRefreshToken: !!tokens.refresh_token,
+      hasData: !!tokenData,
+      dataType: Array.isArray(tokenData) ? 'array' : typeof tokenData,
+      dataLength: Array.isArray(tokenData) ? tokenData.length : 'N/A',
     })
 
-    if (!tokens.access_token) {
-      console.error('No valid tokens found')
+    if (tokenError || !tokenData) {
+      console.error('Failed to get tokens:', tokenError)
+      return NextResponse.json(
+        { error: 'Failed to retrieve access tokens' },
+        { status: 500 }
+      )
+    }
+
+    // RPC 함수는 배열로 반환하므로 첫 번째 요소 가져오기
+    const tokens = Array.isArray(tokenData) ? tokenData[0] : tokenData
+
+    if (!tokens || !tokens.access_token) {
+      console.error('No valid tokens found:', tokens)
       return NextResponse.json(
         { error: 'No valid access token found' },
         { status: 500 }
@@ -74,17 +85,13 @@ export async function POST(request: NextRequest) {
 
       console.log('Token refreshed successfully')
 
-      // 새로운 액세스 토큰 저장 (encrypt_token RPC로 암호화 후 직접 UPDATE)
-      const { data: encryptedAccess } = await adminClient.rpc('encrypt_token', {
-        token: accessToken
+      // 새로운 액세스 토큰 저장
+      await adminClient.rpc('save_encrypted_tokens', {
+        p_user_id: user.id,
+        p_access_token: accessToken,
+        p_refresh_token: tokens.refresh_token,
+        p_encryption_key: encryptionKey,
       })
-      await adminClient
-        .from('users')
-        .update({
-          access_token_encrypted: encryptedAccess,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', user.id)
     } catch (refreshError) {
       console.error('Failed to refresh token:', refreshError)
       // 토큰 갱신 실패 시 기존 토큰으로 시도
