@@ -49,13 +49,26 @@ export async function GET(request: NextRequest) {
 
     if (existingUser) {
       // 기존 사용자: 토큰만 업데이트
-      const encryptionKey = process.env.SUPABASE_ENCRYPTION_KEY!
-      await adminClient.rpc('save_encrypted_tokens', {
-        p_user_id: existingUser.id,
-        p_access_token: tokens.accessToken,
-        p_refresh_token: tokens.refreshToken,
-        p_encryption_key: encryptionKey,
+      // encrypt_token RPC로 암호화 후 직접 UPDATE (save_encrypted_tokens의 auth.uid() 체크 우회)
+      const { data: encryptedAccess } = await adminClient.rpc('encrypt_token', {
+        token: tokens.accessToken
       })
+      const { data: encryptedRefresh } = await adminClient.rpc('encrypt_token', {
+        token: tokens.refreshToken
+      })
+
+      const { error: updateError } = await adminClient
+        .from('users')
+        .update({
+          access_token_encrypted: encryptedAccess,
+          refresh_token_encrypted: encryptedRefresh,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', existingUser.id)
+
+      if (updateError) {
+        console.error('Failed to update tokens:', updateError)
+      }
 
       // 세션 쿠키 설정
       const response = NextResponse.redirect(
@@ -107,14 +120,21 @@ export async function GET(request: NextRequest) {
         )
       }
 
-      // 토큰 저장
-      const encryptionKey = process.env.SUPABASE_ENCRYPTION_KEY!
-      await adminClient.rpc('save_encrypted_tokens', {
-        p_user_id: userId,
-        p_access_token: tokens.accessToken,
-        p_refresh_token: tokens.refreshToken,
-        p_encryption_key: encryptionKey,
+      // 토큰 저장 (encrypt_token RPC로 암호화 후 직접 UPDATE)
+      const { data: encryptedAccessNew } = await adminClient.rpc('encrypt_token', {
+        token: tokens.accessToken
       })
+      const { data: encryptedRefreshNew } = await adminClient.rpc('encrypt_token', {
+        token: tokens.refreshToken
+      })
+
+      await adminClient
+        .from('users')
+        .update({
+          access_token_encrypted: encryptedAccessNew,
+          refresh_token_encrypted: encryptedRefreshNew,
+        })
+        .eq('id', userId)
 
       // 세션 쿠키 설정
       const response = NextResponse.redirect(

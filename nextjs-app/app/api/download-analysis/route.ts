@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
-import { createClient } from '@/utils/supabase/server'
+import { createAdminClient } from '@/utils/supabase/admin'
 
 export async function GET(request: NextRequest) {
   try {
@@ -26,9 +26,9 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    // 3. 사용자 정보 조회
-    const supabase = await createClient()
-    const { data: user, error: userError } = await supabase
+    // 3. 사용자 정보 조회 (RLS 우회)
+    const adminClient = createAdminClient()
+    const { data: user, error: userError } = await adminClient
       .from('users')
       .select('id')
       .eq('google_id', googleId)
@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
     }
 
     // 4. 저장된 분석 데이터 조회 (본인 데이터만)
-    const { data: analysis, error: analysisError } = await supabase
+    const { data: analysis, error: analysisError } = await adminClient
       .from('subscription_analyses')
       .select('data, filename')
       .eq('user_id', user.id)

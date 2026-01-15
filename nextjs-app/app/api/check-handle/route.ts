@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/utils/supabase/server'
+import { createAdminClient } from '@/utils/supabase/admin'
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams
@@ -28,10 +28,10 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const supabase = await createClient()
+    const adminClient = createAdminClient()
 
-    // Handle 중복 확인
-    const { data, error } = await supabase
+    // Handle 중복 확인 (RLS 우회)
+    const { data, error } = await adminClient
       .from('users')
       .select('id')
       .eq('handle', handle)

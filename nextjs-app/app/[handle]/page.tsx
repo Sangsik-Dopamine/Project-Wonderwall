@@ -1,4 +1,4 @@
-import { createClient } from '@/utils/supabase/server'
+import { createAdminClient } from '@/utils/supabase/admin'
 import { notFound } from 'next/navigation'
 import AnalyzeButton from './AnalyzeButton'
 
@@ -14,10 +14,11 @@ export default async function UserPage({ params }: UserPageProps) {
   // @ 제거 (URL에서 @park.sangsik로 오면 park.sangsik만 추출)
   const cleanHandle = handle.replace(/^@/, '')
 
-  const supabase = await createClient()
+  // Admin client 사용 (RLS 우회 - 프로필 페이지는 공개)
+  const adminClient = createAdminClient()
 
   // 사용자 정보 조회
-  const { data: user, error } = await supabase
+  const { data: user, error } = await adminClient
     .from('users')
     .select('id, email, handle')
     .eq('handle', cleanHandle)
