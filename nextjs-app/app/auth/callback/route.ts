@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { exchangeCodeForTokens, getGoogleUserInfo } from '@/lib/google-oauth'
-import { createClient } from '@/utils/supabase/server'
 import { createAdminClient } from '@/utils/supabase/admin'
 
 export async function GET(request: NextRequest) {
@@ -38,18 +37,18 @@ export async function GET(request: NextRequest) {
     const userInfo = await getGoogleUserInfo(tokens.accessToken)
 
     // 3. Supabase에서 사용자 처리
-    const supabase = await createClient()
+    // Admin client를 사용하여 RLS를 우회 (custom OAuth flow에서는 auth.uid()가 없으므로)
+    const adminClient = createAdminClient()
 
     // 3-1. 기존 사용자 확인
-    const { data: existingUser } = await supabase
+    const { data: existingUser } = await adminClient
       .from('users')
       .select('id, handle')
       .eq('google_id', userInfo.googleId)
       .single()
 
     if (existingUser) {
-      // 기존 사용자: 토큰만 업데이트 (관리자 클라이언트 사용)
-      const adminClient = createAdminClient()
+      // 기존 사용자: 토큰만 업데이트
       const encryptionKey = process.env.SUPABASE_ENCRYPTION_KEY!
       await adminClient.rpc('save_encrypted_tokens', {
         p_user_id: existingUser.id,
@@ -80,7 +79,7 @@ export async function GET(request: NextRequest) {
       let handle = defaultHandle
       let suffix = 1
       while (true) {
-        const { data: existingHandle } = await supabase
+        const { data: existingHandle } = await adminClient
           .from('users')
           .select('id')
           .eq('handle', handle)
@@ -91,8 +90,7 @@ export async function GET(request: NextRequest) {
         suffix++
       }
 
-      // 새 사용자 생성 (관리자 클라이언트 사용)
-      const adminClient = createAdminClient()
+      // 새 사용자 생성
       const userId = crypto.randomUUID()
 
       const { error: insertError } = await adminClient.from('users').insert({
@@ -109,7 +107,7 @@ export async function GET(request: NextRequest) {
         )
       }
 
-      // 토큰 저장 (관리자 클라이언트 사용)
+      // 토큰 저장
       const encryptionKey = process.env.SUPABASE_ENCRYPTION_KEY!
       await adminClient.rpc('save_encrypted_tokens', {
         p_user_id: userId,
