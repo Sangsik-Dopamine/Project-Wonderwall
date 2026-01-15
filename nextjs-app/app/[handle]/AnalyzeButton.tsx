@@ -152,11 +152,6 @@ export default function AnalyzeButton() {
     }
   }
 
-  const handleDownload = () => {
-    if (!result) return
-    window.location.href = `/api/download-analysis?filename=${result.filename}`
-  }
-
   const handleCreateWonderwall = () => {
     router.push('/wonderwall')
   }
@@ -239,19 +234,12 @@ export default function AnalyzeButton() {
               </p>
             </div>
 
-            <div className="bg-gray-50 rounded-lg p-4 mb-4">
+            <div className="bg-gray-50 rounded-lg p-4">
               <p className="text-sm text-gray-600 mb-1">저장된 파일:</p>
               <p className="text-sm font-mono text-gray-900 break-all">
                 {result.filename}
               </p>
             </div>
-
-            <button
-              onClick={handleDownload}
-              className="w-full px-6 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors"
-            >
-              📥 JSON 파일 다운로드
-            </button>
           </div>
 
           {/* AI 사고 과정 (Reasoning) */}

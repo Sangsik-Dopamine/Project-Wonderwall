@@ -59,7 +59,7 @@ ${keywords}`
           // Claude Sonnet 4.5 API 스트리밍 호출
           const streamResponse = await anthropic.messages.stream({
             model: 'claude-sonnet-4-5-20250929',
-            max_tokens: 4096,
+            max_tokens: 8192,
             temperature: 0.8,
             system: systemPrompt,
             messages: [
