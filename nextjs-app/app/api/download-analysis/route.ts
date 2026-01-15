@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
-import { createClient } from '@/utils/supabase/server'
+import { createAdminClient } from '@/utils/supabase/admin'
 
 export async function GET(request: NextRequest) {
   try {
@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
     }
 
     // 3. 사용자 정보 조회
-    const supabase = await createClient()
+    const supabase = createAdminClient()
     const { data: user, error: userError } = await supabase
       .from('users')
       .select('id')
