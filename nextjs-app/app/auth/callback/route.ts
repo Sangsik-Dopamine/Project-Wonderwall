@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { exchangeCodeForTokens, getGoogleUserInfo } from '@/lib/google-oauth'
-import { createClient } from '@/utils/supabase/server'
 import { createAdminClient } from '@/utils/supabase/admin'
 
 export async function GET(request: NextRequest) {
@@ -37,26 +36,33 @@ export async function GET(request: NextRequest) {
     // 2. Access Token으로 사용자 정보 조회
     const userInfo = await getGoogleUserInfo(tokens.accessToken)
 
-    // 3. Supabase에서 사용자 처리
-    const supabase = await createClient()
+    // 3. Admin Client 사용 (RLS 우회)
+    const adminClient = createAdminClient()
 
-    // 3-1. 기존 사용자 확인
-    const { data: existingUser } = await supabase
+    // 4. 기존 사용자 확인
+    const { data: existingUser } = await adminClient
       .from('users')
       .select('id, handle')
       .eq('google_id', userInfo.googleId)
-      .single()
+      .maybeSingle()
 
     if (existingUser) {
-      // 기존 사용자: 토큰만 업데이트 (관리자 클라이언트 사용)
-      const adminClient = createAdminClient()
-      const encryptionKey = process.env.SUPABASE_ENCRYPTION_KEY!
-      await adminClient.rpc('save_encrypted_tokens', {
-        p_user_id: existingUser.id,
-        p_access_token: tokens.accessToken,
-        p_refresh_token: tokens.refreshToken,
-        p_encryption_key: encryptionKey,
+      // 기존 사용자: 토큰 암호화 후 업데이트
+      const { data: encryptedAccess } = await adminClient.rpc('encrypt_token', {
+        token: tokens.accessToken
       })
+      const { data: encryptedRefresh } = await adminClient.rpc('encrypt_token', {
+        token: tokens.refreshToken
+      })
+
+      await adminClient
+        .from('users')
+        .update({
+          access_token_encrypted: encryptedAccess,
+          refresh_token_encrypted: encryptedRefresh,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', existingUser.id)
 
       // 세션 쿠키 설정
       const response = NextResponse.redirect(
@@ -72,27 +78,26 @@ export async function GET(request: NextRequest) {
 
       return response
     } else {
-      // 새 사용자: handle 생성 필요
-      // handle은 이메일의 @ 앞부분을 기본값으로 사용
-      const defaultHandle = userInfo.email.split('@')[0]
+      // 새 사용자: handle 생성
+      const defaultHandle = userInfo.email.split('@')[0].toLowerCase().replace(/[^a-z0-9_]/g, '')
 
-      // handle 중복 확인 및 유니크하게 생성
-      let handle = defaultHandle
+      // handle 중복 확인
+      let handle = defaultHandle || 'user'
       let suffix = 1
       while (true) {
-        const { data: existingHandle } = await supabase
+        const { data: existingHandle } = await adminClient
           .from('users')
           .select('id')
           .eq('handle', handle)
-          .single()
+          .maybeSingle()
 
         if (!existingHandle) break
         handle = `${defaultHandle}${suffix}`
         suffix++
+        if (suffix > 100) break
       }
 
-      // 새 사용자 생성 (관리자 클라이언트 사용)
-      const adminClient = createAdminClient()
+      // 새 사용자 생성
       const userId = crypto.randomUUID()
 
       const { error: insertError } = await adminClient.from('users').insert({
@@ -109,14 +114,21 @@ export async function GET(request: NextRequest) {
         )
       }
 
-      // 토큰 저장 (관리자 클라이언트 사용)
-      const encryptionKey = process.env.SUPABASE_ENCRYPTION_KEY!
-      await adminClient.rpc('save_encrypted_tokens', {
-        p_user_id: userId,
-        p_access_token: tokens.accessToken,
-        p_refresh_token: tokens.refreshToken,
-        p_encryption_key: encryptionKey,
+      // 토큰 암호화 후 저장
+      const { data: encryptedAccess } = await adminClient.rpc('encrypt_token', {
+        token: tokens.accessToken
       })
+      const { data: encryptedRefresh } = await adminClient.rpc('encrypt_token', {
+        token: tokens.refreshToken
+      })
+
+      await adminClient
+        .from('users')
+        .update({
+          access_token_encrypted: encryptedAccess,
+          refresh_token_encrypted: encryptedRefresh,
+        })
+        .eq('id', userId)
 
       // 세션 쿠키 설정
       const response = NextResponse.redirect(
