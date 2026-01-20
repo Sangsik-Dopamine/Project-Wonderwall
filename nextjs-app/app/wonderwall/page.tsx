@@ -120,13 +120,29 @@ export default function WonderwallPage() {
     <div className="min-h-screen bg-black py-16 px-4">
       <div className="max-w-3xl mx-auto">
         {/* 헤더 */}
-        <div className="text-center mb-16">
+        <div className="text-center mb-8">
           <h1 className="text-4xl font-bold text-white mb-3" style={{ fontFamily: 'Pretendard Variable, Pretendard, sans-serif' }}>
             Wonderwall
           </h1>
           <p className="text-base text-gray-400">
             당신의 관심사가 만들어낸 아름다운 초상화
           </p>
+        </div>
+
+        {/* 챗봇 버튼 - 항상 표시 */}
+        <div className="text-center mb-12">
+          <button
+            onClick={() => {
+              if (essay) {
+                localStorage.setItem('wonderwallEssay', essay)
+              }
+              router.push('/chat')
+            }}
+            className="px-8 py-4 text-base font-semibold text-black bg-white rounded-lg hover:bg-gray-200 transition-colors"
+            style={{ fontFamily: 'Pretendard Variable, Pretendard, sans-serif' }}
+          >
+            나를 이해하는 에이전트와 대화하기
+          </button>
         </div>
 
         {/* 에러 메시지 */}
@@ -236,34 +252,21 @@ export default function WonderwallPage() {
 
         {/* 공유 버튼 */}
         {isComplete && essay && (
-          <div className="flex flex-col gap-4 items-center">
+          <div className="flex gap-3 justify-center">
             <button
-              onClick={() => {
-                // 에세이를 localStorage에 저장하고 챗봇 페이지로 이동
-                localStorage.setItem('wonderwallEssay', essay)
-                router.push('/chat')
-              }}
-              className="px-8 py-4 text-base font-semibold text-black bg-white rounded-lg hover:bg-gray-200 transition-colors"
+              onClick={handleShareLink}
+              className="px-6 py-3 text-sm font-medium text-gray-300 bg-transparent border border-gray-600 rounded-lg hover:bg-gray-800 transition-colors"
               style={{ fontFamily: 'Pretendard Variable, Pretendard, sans-serif' }}
             >
-              나를 이해하는 에이전트와 대화하기
+              링크 공유하기
             </button>
-            <div className="flex gap-3">
-              <button
-                onClick={handleShareLink}
-                className="px-6 py-3 text-sm font-medium text-gray-300 bg-transparent border border-gray-600 rounded-lg hover:bg-gray-800 transition-colors"
-                style={{ fontFamily: 'Pretendard Variable, Pretendard, sans-serif' }}
-              >
-                링크 공유하기
-              </button>
-              <button
-                onClick={handleShareLinktree}
-                className="px-6 py-3 text-sm font-medium text-gray-300 bg-transparent border border-gray-600 rounded-lg hover:bg-gray-800 transition-colors"
-                style={{ fontFamily: 'Pretendard Variable, Pretendard, sans-serif' }}
-              >
-                링크트리 공유하기
-              </button>
-            </div>
+            <button
+              onClick={handleShareLinktree}
+              className="px-6 py-3 text-sm font-medium text-gray-300 bg-transparent border border-gray-600 rounded-lg hover:bg-gray-800 transition-colors"
+              style={{ fontFamily: 'Pretendard Variable, Pretendard, sans-serif' }}
+            >
+              링크트리 공유하기
+            </button>
           </div>
         )}
 
