@@ -236,21 +236,34 @@ export default function WonderwallPage() {
 
         {/* 공유 버튼 */}
         {isComplete && essay && (
-          <div className="flex gap-3 justify-center">
+          <div className="flex flex-col gap-4 items-center">
             <button
-              onClick={handleShareLink}
-              className="px-6 py-3 text-sm font-medium text-black bg-white border border-gray-600 rounded-lg hover:bg-gray-200 transition-colors"
+              onClick={() => {
+                // 에세이를 localStorage에 저장하고 챗봇 페이지로 이동
+                localStorage.setItem('wonderwallEssay', essay)
+                router.push('/chat')
+              }}
+              className="px-8 py-4 text-base font-semibold text-black bg-white rounded-lg hover:bg-gray-200 transition-colors"
               style={{ fontFamily: 'Pretendard Variable, Pretendard, sans-serif' }}
             >
-              링크 공유하기
+              나를 이해하는 에이전트와 대화하기
             </button>
-            <button
-              onClick={handleShareLinktree}
-              className="px-6 py-3 text-sm font-medium text-black bg-white border border-gray-600 rounded-lg hover:bg-gray-200 transition-colors"
-              style={{ fontFamily: 'Pretendard Variable, Pretendard, sans-serif' }}
-            >
-              링크트리 공유하기
-            </button>
+            <div className="flex gap-3">
+              <button
+                onClick={handleShareLink}
+                className="px-6 py-3 text-sm font-medium text-gray-300 bg-transparent border border-gray-600 rounded-lg hover:bg-gray-800 transition-colors"
+                style={{ fontFamily: 'Pretendard Variable, Pretendard, sans-serif' }}
+              >
+                링크 공유하기
+              </button>
+              <button
+                onClick={handleShareLinktree}
+                className="px-6 py-3 text-sm font-medium text-gray-300 bg-transparent border border-gray-600 rounded-lg hover:bg-gray-800 transition-colors"
+                style={{ fontFamily: 'Pretendard Variable, Pretendard, sans-serif' }}
+              >
+                링크트리 공유하기
+              </button>
+            </div>
           </div>
         )}
 
