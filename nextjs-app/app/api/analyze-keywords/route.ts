@@ -43,9 +43,10 @@ export async function POST(request: NextRequest) {
     console.log('Analyzing channels:', channels.length)
 
     // 프롬프트 생성
-    const systemPrompt = `너는 유튜브 구독 채널 데이터를 분석해서 사용자의 관심사를 파악하는 전문가야. 채널 제목을 보고 각 채널의 핵심 주제를 3개의 키워드로 추출해줘.`
+    const MAX_KEYWORDS = 300
+    const systemPrompt = `너는 유튜브 구독 채널 데이터를 분석해서 사용자의 관심사를 파악하는 전문가야. 채널 제목을 보고 각 채널의 핵심 주제를 키워드로 추출해줘. 단, 총 키워드 개수는 반드시 ${MAX_KEYWORDS}개 이하로 제한해줘.`
 
-    const userPrompt = `다음은 유튜브 채널 제목 리스트이다. 각 채널의 특징을 분석해서 채널당 3개의 핵심 키워드를 추출해줘. 다른 설명은 생략하고 오직 추출된 키워드들만 콤마(,)로 구분된 형식으로 나열해줘.
+    const userPrompt = `다음은 유튜브 채널 제목 리스트이다. 각 채널의 특징을 분석해서 핵심 키워드를 추출해줘. 다른 설명은 생략하고 오직 추출된 키워드들만 콤마(,)로 구분된 형식으로 나열해줘. 총 키워드 개수는 ${MAX_KEYWORDS}개를 넘지 않도록 해줘.
 
 채널 리스트:
 ${channelTitles}`
@@ -66,12 +67,29 @@ ${channelTitles}`
             messages: [{ role: 'user', content: userPrompt }],
           })
 
+          // 키워드 개수 추적을 위한 변수
+          let keywordCount = 0
+          let accumulatedText = ''
+          let limitReached = false
+
           // 스트리밍 응답 처리
           for await (const chunk of streamResponse) {
             if (chunk.type === 'content_block_delta' &&
                 chunk.delta.type === 'text_delta') {
               const content = chunk.delta.text
               if (content) {
+                // 콤마를 세어 키워드 개수 추적
+                accumulatedText += content
+                const commaCount = (accumulatedText.match(/,/g) || []).length
+                keywordCount = commaCount + 1 // 키워드 개수 = 콤마 개수 + 1
+
+                // MAX_KEYWORDS 개수에 도달하면 스트림 종료
+                if (keywordCount >= MAX_KEYWORDS) {
+                  console.log(`Reached ${MAX_KEYWORDS} keywords limit, stopping stream`)
+                  limitReached = true
+                  break
+                }
+
                 const data = { text: content, thoughts: '' }
                 try {
                   controller.enqueue(encoder.encode(JSON.stringify(data) + '\n'))
@@ -83,7 +101,7 @@ ${channelTitles}`
             }
           }
 
-          console.log('Keywords extraction completed')
+          console.log(`Keywords extraction completed. Total keywords: ${keywordCount}${limitReached ? ' (limit reached)' : ''}`)
           controller.close()
         } catch (error: any) {
           console.error('Error during streaming:', error)
