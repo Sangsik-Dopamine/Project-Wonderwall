@@ -8,27 +8,8 @@ interface Message {
   content: string
 }
 
-export async function POST(request: NextRequest) {
-  try {
-    const { messages, essay, isInitial } = await request.json()
-
-    // Anthropic API 초기화
-    const apiKey = process.env.ANTHROPIC_API_KEY
-    if (!apiKey) {
-      console.error('ANTHROPIC_API_KEY is not set')
-      return new Response(
-        JSON.stringify({ error: 'Anthropic API key is not configured' }),
-        {
-          status: 500,
-          headers: { 'Content-Type': 'application/json' }
-        }
-      )
-    }
-
-    const anthropic = new Anthropic({ apiKey })
-
-    // 시스템 프롬프트 생성
-    const systemPrompt = `당신은 유저의 관심사를 가장 잘 이해하는 친구같은 동반자입니다.
+function buildCompanionPrompt(essay: string): string {
+  return `당신은 유저의 관심사를 가장 잘 이해하는 친구같은 동반자입니다.
 
 ## 유저에 대한 정보 (Wonderwall 에세이)
 ${essay || '(에세이 정보 없음)'}
@@ -56,6 +37,50 @@ ${essay || '(에세이 정보 없음)'}
 - 공감적이고 지지적인 태도를 유지해주세요
 - 유저의 이야기를 경청하고 적절한 질문을 해주세요
 - 대화 흐름을 자연스럽게 유지해주세요`
+}
+
+function buildWonderwallPrompt(likedVideos: string): string {
+  return `너는 사용자의 관심사에 관하여 대화를 나누어주는 친구같은 AI 에이전트야.
+
+## 사용자의 좋아요 표시한 동영상 목록
+${likedVideos || '(동영상 목록 없음)'}
+
+## 대화 진행 가이드라인
+
+1) 우선 사용자의 '좋아요 표시한 동영상 목록'을 읽어와서 어떤 영상에 대해 이야기하고 싶은지 물어봐줘. 예를 들면 "최근에 '주피디의 역사여행'에서 이 동영상에 좋아요를 눌렀네? 혹시 어떤점이 좋았는지 말해줄 수 있어?" 라는 icebreak을 먼저 해줘. 실제 사용자의 좋아요 목록에 있는 동영상 제목과 채널명을 사용해서 자연스럽게 말해줘.
+
+2) 그리고 상대방의 관심사와 생각을 끌어내는 대화를 진행해줘. 사용자가 좋아요한 다른 영상들에 대해서도 자연스럽게 화제를 넓혀가면서 대화해줘.
+
+## 대화 스타일
+- 친근하고 따뜻한 반말 사용
+- 공감적이고 호기심 어린 태도
+- 사용자의 이야기를 경청하고 적절한 질문하기
+- 대화 흐름을 자연스럽게 유지하기`
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const { messages, essay, likedVideos, mode, isInitial } = await request.json()
+
+    // Anthropic API 초기화
+    const apiKey = process.env.ANTHROPIC_API_KEY
+    if (!apiKey) {
+      console.error('ANTHROPIC_API_KEY is not set')
+      return new Response(
+        JSON.stringify({ error: 'Anthropic API key is not configured' }),
+        {
+          status: 500,
+          headers: { 'Content-Type': 'application/json' }
+        }
+      )
+    }
+
+    const anthropic = new Anthropic({ apiKey })
+
+    // 모드에 따라 시스템 프롬프트 선택
+    const systemPrompt = mode === 'wonderwall'
+      ? buildWonderwallPrompt(likedVideos || '')
+      : buildCompanionPrompt(essay || '')
 
     // 메시지 변환
     const claudeMessages: { role: 'user' | 'assistant'; content: string }[] = isInitial

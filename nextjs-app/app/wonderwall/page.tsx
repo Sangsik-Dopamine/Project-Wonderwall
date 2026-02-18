@@ -1,283 +1,320 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
+
+interface Message {
+  role: 'user' | 'assistant'
+  content: string
+}
+
+interface LikedVideo {
+  videoId: string
+  title: string
+  channelTitle: string
+  thumbnail: string
+  likedAt: string
+}
 
 export default function WonderwallPage() {
   const router = useRouter()
-  const [keywords, setKeywords] = useState('')
-  const [isGenerating, setIsGenerating] = useState(false)
-  const [essay, setEssay] = useState('')
-  const [thoughts, setThoughts] = useState('')
-  const [error, setError] = useState('')
-  const [isComplete, setIsComplete] = useState(false)
+  const [messages, setMessages] = useState<Message[]>([])
+  const [input, setInput] = useState('')
+  const [isLoading, setIsLoading] = useState(false)
+  const [likedVideos, setLikedVideos] = useState<LikedVideo[]>([])
+  const [likedVideosText, setLikedVideosText] = useState('')
+  const [isInitialized, setIsInitialized] = useState(false)
+  const messagesEndRef = useRef<HTMLDivElement>(null)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }
 
   useEffect(() => {
-    // localStorage에서 키워드 가져오기
-    const savedKeywords = localStorage.getItem('extractedKeywords')
-    if (savedKeywords) {
-      setKeywords(savedKeywords)
+    scrollToBottom()
+  }, [messages])
+
+  // localStorage에서 좋아요 동영상 데이터 로드 및 초기 메시지
+  useEffect(() => {
+    const savedData = localStorage.getItem('likedVideos')
+    if (savedData) {
+      try {
+        const parsed = JSON.parse(savedData)
+        setLikedVideos(parsed.videos || [])
+
+        // 동영상 목록을 텍스트로 변환 (프롬프트용)
+        const videosText = (parsed.videos || [])
+          .map((v: LikedVideo, i: number) => `${i + 1}. "${v.title}" (채널: ${v.channelTitle})`)
+          .join('\n')
+        setLikedVideosText(videosText)
+      } catch (e) {
+        console.error('Failed to parse liked videos:', e)
+      }
+    }
+
+    if (!isInitialized) {
+      setIsInitialized(true)
+      initializeChat(savedData)
     }
   }, [])
 
-  const handleGenerate = async () => {
-    if (!keywords) {
-      setError('키워드가 없습니다. 먼저 관심사 분석을 진행해주세요.')
-      return
+  const initializeChat = async (savedData: string | null) => {
+    let videosText = ''
+    if (savedData) {
+      try {
+        const parsed = JSON.parse(savedData)
+        videosText = (parsed.videos || [])
+          .map((v: LikedVideo, i: number) => `${i + 1}. "${v.title}" (채널: ${v.channelTitle})`)
+          .join('\n')
+      } catch (e) {
+        // ignore
+      }
     }
 
-    setIsGenerating(true)
-    setError('')
-    setEssay('')
-    setThoughts('')
-    setIsComplete(false)
-
+    setIsLoading(true)
     try {
-      const response = await fetch('/api/create-wonderwall', {
+      const response = await fetch('/api/chat', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ keywords }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: [],
+          likedVideos: videosText,
+          mode: 'wonderwall',
+          isInitial: true,
+        }),
       })
 
-      if (!response.ok) {
-        const errorData = await response.json()
-        setError(errorData.error || 'Wonderwall 생성 중 오류가 발생했습니다')
-        setIsGenerating(false)
-        return
-      }
+      if (!response.ok) throw new Error('Failed to initialize chat')
 
-      // 스트리밍 응답 처리
       const reader = response.body?.getReader()
       const decoder = new TextDecoder()
+      if (!reader) return
 
-      if (!reader) {
-        setError('스트리밍을 시작할 수 없습니다')
-        setIsGenerating(false)
-        return
-      }
-
-      let accumulatedEssay = ''
-      let accumulatedThoughts = ''
-      let buffer = ''
-
+      let assistantMessage = ''
       while (true) {
         const { done, value } = await reader.read()
-
-        if (done) {
-          console.log('Wonderwall 생성 완료!')
-          setIsComplete(true)
-          break
-        }
-
+        if (done) break
         const chunk = decoder.decode(value, { stream: true })
-        buffer += chunk
-
-        // 개행 문자로 구분된 JSON 파싱
-        const lines = buffer.split('\n')
-        buffer = lines.pop() || ''
-
+        const lines = chunk.split('\n')
         for (const line of lines) {
           if (line.trim()) {
             try {
               const data = JSON.parse(line)
-
-              if (data.thoughts) {
-                accumulatedThoughts += data.thoughts
-                setThoughts(accumulatedThoughts)
-              }
-
               if (data.text) {
-                accumulatedEssay += data.text
-                setEssay(accumulatedEssay)
+                assistantMessage += data.text
+                setMessages([{ role: 'assistant', content: assistantMessage }])
               }
-            } catch (e) {
-              console.error('JSON 파싱 에러:', e)
-            }
+            } catch (e) { /* ignore */ }
           }
         }
       }
-    } catch (err: any) {
-      console.error('Wonderwall 생성 에러:', err)
-      setError('네트워크 오류가 발생했습니다: ' + err.message)
+    } catch (error) {
+      console.error('Failed to initialize chat:', error)
+      setMessages([{
+        role: 'assistant',
+        content: '안녕! 너의 좋아요한 동영상 목록을 보면서 이야기해볼까? 어떤 영상이 제일 기억에 남아?'
+      }])
     } finally {
-      setIsGenerating(false)
+      setIsLoading(false)
     }
   }
 
-  const handleShareLink = () => {
-    // TODO: 링크 공유 기능 구현
-    alert('링크 공유 기능은 준비 중입니다')
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!input.trim() || isLoading) return
+
+    const userMessage = input.trim()
+    setInput('')
+
+    const newMessages: Message[] = [...messages, { role: 'user', content: userMessage }]
+    setMessages(newMessages)
+    setIsLoading(true)
+
+    try {
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: newMessages,
+          likedVideos: likedVideosText,
+          mode: 'wonderwall',
+          isInitial: false,
+        }),
+      })
+
+      if (!response.ok) throw new Error('Failed to send message')
+
+      const reader = response.body?.getReader()
+      const decoder = new TextDecoder()
+      if (!reader) return
+
+      let assistantMessage = ''
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        const chunk = decoder.decode(value, { stream: true })
+        const lines = chunk.split('\n')
+        for (const line of lines) {
+          if (line.trim()) {
+            try {
+              const data = JSON.parse(line)
+              if (data.text) {
+                assistantMessage += data.text
+                setMessages([...newMessages, { role: 'assistant', content: assistantMessage }])
+              }
+            } catch (e) { /* ignore */ }
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Failed to send message:', error)
+      setMessages([...newMessages, { role: 'assistant', content: '메시지를 처리하는 중에 오류가 발생했어요. 다시 시도해 주세요.' }])
+    } finally {
+      setIsLoading(false)
+    }
   }
 
-  const handleShareLinktree = () => {
-    // TODO: 링크트리 공유 기능 구현
-    alert('링크트리 공유 기능은 준비 중입니다')
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault()
+      handleSubmit(e)
+    }
   }
+
+  useEffect(() => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto'
+      textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 120)}px`
+    }
+  }, [input])
 
   return (
-    <div className="min-h-screen bg-black py-16 px-4">
-      <div className="max-w-3xl mx-auto">
-        {/* 헤더 */}
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-white mb-3" style={{ fontFamily: 'Pretendard Variable, Pretendard, sans-serif' }}>
-            Wonderwall
-          </h1>
-          <p className="text-base text-gray-400">
-            당신의 관심사가 만들어낸 아름다운 초상화
-          </p>
-        </div>
-
-        {/* 챗봇 버튼 - 항상 표시 */}
-        <div className="text-center mb-12">
-          <button
-            onClick={() => {
-              if (essay) {
-                localStorage.setItem('wonderwallEssay', essay)
-              }
-              router.push('/chat')
-            }}
-            className="px-8 py-4 text-base font-semibold text-black bg-white rounded-lg hover:bg-gray-200 transition-colors"
-            style={{ fontFamily: 'Pretendard Variable, Pretendard, sans-serif' }}
-          >
-            나를 이해하는 에이전트와 대화하기
-          </button>
-        </div>
-
-        {/* 에러 메시지 */}
-        {error && (
-          <div className="mb-8 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
-            {error}
-          </div>
-        )}
-
-        {/* 생성 버튼 */}
-        {!essay && !isGenerating && (
-          <div className="text-center mb-16">
-            <button
-              onClick={handleGenerate}
-              disabled={!keywords}
-              className="px-10 py-4 text-base font-semibold text-black bg-white rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              style={{ fontFamily: 'Pretendard Variable, Pretendard, sans-serif' }}
-            >
-              {keywords ? '나의 Wonderwall 만들기' : '키워드가 없습니다'}
-            </button>
-            {!keywords && (
-              <p className="mt-4 text-sm text-gray-400">
-                먼저 관심사 분석을 완료해주세요
-              </p>
-            )}
-          </div>
-        )}
-
-        {/* 생성 중 표시 */}
-        {isGenerating && (
-          <div className="text-center mb-16">
-            <p className="text-base text-gray-400" style={{ fontFamily: 'Pretendard Variable, Pretendard, sans-serif' }}>
-              AI가 당신의 Wonderwall을 작성하고 있습니다...
-            </p>
-          </div>
-        )}
-
-
-        {/* 에세이 결과 */}
-        {essay && (
-          <div className="mb-12">
-            <div className="bg-black px-12 py-16 rounded-lg">
-              <style jsx>{`
-                .essay-content {
-                  font-family: 'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
-                  font-size: 18px;
-                  line-height: 2.2;
-                  color: #ffffff;
-                  letter-spacing: -0.02em;
-                }
-
-                .essay-content h1,
-                .essay-content h2,
-                .essay-content h3 {
-                  font-weight: 700;
-                  margin-top: 2.5em;
-                  margin-bottom: 1em;
-                  line-height: 1.4;
-                  color: #ffffff;
-                }
-
-                .essay-content h1 {
-                  font-size: 28px;
-                }
-
-                .essay-content h2 {
-                  font-size: 24px;
-                }
-
-                .essay-content h3 {
-                  font-size: 20px;
-                }
-
-                .essay-content p {
-                  margin-bottom: 1.8em;
-                  color: #ffffff;
-                }
-
-                .essay-content strong {
-                  font-weight: 600;
-                  color: #ffffff;
-                }
-              `}</style>
-              <div
-                className="essay-content"
-                dangerouslySetInnerHTML={{
-                  __html: essay
-                    .split('\n\n')
-                    .map((para, i) => {
-                      // 숫자로 시작하는 줄은 제목으로 처리
-                      if (para.match(/^[0-9]+[).]\s/)) {
-                        return `<h2>${para}</h2>`
-                      }
-                      // **로 감싸진 텍스트는 섹션 제목
-                      if (para.match(/^\*\*.+\*\*$/)) {
-                        return `<h3>${para.replace(/\*\*/g, '')}</h3>`
-                      }
-                      // 일반 단락
-                      return para.trim() ? `<p>${para}</p>` : ''
-                    })
-                    .join('')
-                }}
-              />
-            </div>
-          </div>
-        )}
-
-        {/* 공유 버튼 */}
-        {isComplete && essay && (
-          <div className="flex gap-3 justify-center">
-            <button
-              onClick={handleShareLink}
-              className="px-6 py-3 text-sm font-medium text-gray-300 bg-transparent border border-gray-600 rounded-lg hover:bg-gray-800 transition-colors"
-              style={{ fontFamily: 'Pretendard Variable, Pretendard, sans-serif' }}
-            >
-              링크 공유하기
-            </button>
-            <button
-              onClick={handleShareLinktree}
-              className="px-6 py-3 text-sm font-medium text-gray-300 bg-transparent border border-gray-600 rounded-lg hover:bg-gray-800 transition-colors"
-              style={{ fontFamily: 'Pretendard Variable, Pretendard, sans-serif' }}
-            >
-              링크트리 공유하기
-            </button>
-          </div>
-        )}
-
-        {/* 뒤로 가기 버튼 */}
-        <div className="text-center mt-12">
+    <div className="flex h-screen bg-black">
+      {/* 좌측: 좋아요 동영상 목록 (30%) */}
+      <div className="w-[30%] border-r border-gray-800 flex flex-col">
+        <div className="flex-shrink-0 px-4 py-4 border-b border-gray-800">
           <button
             onClick={() => router.back()}
-            className="text-gray-400 hover:text-white underline"
+            className="text-gray-400 hover:text-white text-sm transition-colors"
           >
-            ← 돌아가기
+            &larr; 돌아가기
           </button>
+          <h2 className="text-sm font-semibold text-white mt-2" style={{ fontFamily: 'Pretendard Variable, Pretendard, sans-serif' }}>
+            좋아요한 동영상
+          </h2>
+          <p className="text-xs text-gray-500 mt-1">최근 1개월</p>
+        </div>
+
+        <div className="flex-1 overflow-y-auto">
+          {likedVideos.length === 0 ? (
+            <div className="p-4 text-center text-sm text-gray-500">
+              좋아요한 동영상이 없습니다.<br />
+              먼저 데이터를 불러와주세요.
+            </div>
+          ) : (
+            <div className="divide-y divide-gray-800">
+              {likedVideos.map((video, index) => (
+                <div key={index} className="p-3 hover:bg-gray-900 transition-colors">
+                  <div className="flex gap-3">
+                    {video.thumbnail && (
+                      <img
+                        src={video.thumbnail}
+                        alt={video.title}
+                        className="w-24 h-14 object-cover rounded flex-shrink-0"
+                      />
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs text-white font-medium line-clamp-2 leading-relaxed">
+                        {video.title}
+                      </p>
+                      <p className="text-xs text-gray-500 mt-1 truncate">
+                        {video.channelTitle}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* 우측: 챗봇 인터페이스 (70%) */}
+      <div className="w-[70%] flex flex-col">
+        {/* 챗봇 헤더 */}
+        <div className="flex-shrink-0 border-b border-gray-800 px-6 py-4">
+          <h1 className="text-lg font-semibold text-white" style={{ fontFamily: 'Pretendard Variable, Pretendard, sans-serif' }}>
+            Wonderwall
+          </h1>
+          <p className="text-xs text-gray-500 mt-1">당신의 관심사에 대해 이야기해요</p>
+        </div>
+
+        {/* 메시지 영역 */}
+        <div className="flex-1 overflow-y-auto px-6 py-6">
+          <div className="space-y-6">
+            {messages.map((message, index) => (
+              <div
+                key={index}
+                className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+              >
+                <div
+                  className={`max-w-[80%] rounded-2xl px-4 py-3 ${
+                    message.role === 'user'
+                      ? 'bg-white text-black'
+                      : 'bg-gray-800 text-white'
+                  }`}
+                  style={{ fontFamily: 'Pretendard Variable, Pretendard, sans-serif' }}
+                >
+                  <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.content}</p>
+                </div>
+              </div>
+            ))}
+            {isLoading && messages.length > 0 && messages[messages.length - 1].role === 'user' && (
+              <div className="flex justify-start">
+                <div className="bg-gray-800 text-white rounded-2xl px-4 py-3">
+                  <div className="flex space-x-1">
+                    <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+                    <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+                    <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+                  </div>
+                </div>
+              </div>
+            )}
+            <div ref={messagesEndRef} />
+          </div>
+        </div>
+
+        {/* 입력 영역 */}
+        <div className="flex-shrink-0 border-t border-gray-800 px-6 py-4">
+          <form onSubmit={handleSubmit}>
+            <div className="flex items-end gap-3 bg-gray-900 rounded-2xl px-4 py-3">
+              <textarea
+                ref={textareaRef}
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder="메시지를 입력하세요..."
+                className="flex-1 bg-transparent text-white placeholder-gray-500 resize-none focus:outline-none text-sm"
+                style={{
+                  fontFamily: 'Pretendard Variable, Pretendard, sans-serif',
+                  minHeight: '24px',
+                  maxHeight: '120px'
+                }}
+                rows={1}
+                disabled={isLoading}
+              />
+              <button
+                type="submit"
+                disabled={!input.trim() || isLoading}
+                className="flex-shrink-0 w-8 h-8 flex items-center justify-center bg-white text-black rounded-full disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-200 transition-colors"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                </svg>
+              </button>
+            </div>
+          </form>
         </div>
       </div>
     </div>

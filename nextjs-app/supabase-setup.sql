@@ -327,11 +327,38 @@ COMMENT ON COLUMN public.admin_settings.system_prompt IS 'System prompt 텍스�
 COMMENT ON COLUMN public.admin_settings.user_prompt_template IS 'User prompt 템플릿 ({channelTitles} 또는 {keywords} 변수 포함)';
 
 
+-- 20. liked_videos 테이블 생성 (좋아요한 동영상 저장용)
+-- ----------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS public.liked_videos (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
+  data JSONB NOT NULL DEFAULT '{}'::jsonb,
+  created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+  updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+  UNIQUE(user_id)
+);
+
+-- liked_videos updated_at 트리거
+DROP TRIGGER IF EXISTS set_updated_at_liked_videos ON public.liked_videos;
+CREATE TRIGGER set_updated_at_liked_videos
+  BEFORE UPDATE ON public.liked_videos
+  FOR EACH ROW
+  EXECUTE FUNCTION public.handle_updated_at();
+
+-- liked_videos 인덱스
+CREATE INDEX IF NOT EXISTS idx_liked_videos_user_id ON public.liked_videos(user_id);
+
+-- liked_videos 테이블 설명
+COMMENT ON TABLE public.liked_videos IS '사용자의 YouTube 좋아요한 동영상 목록 저장소';
+COMMENT ON COLUMN public.liked_videos.user_id IS '사용자 ID (users.id FK)';
+COMMENT ON COLUMN public.liked_videos.data IS '좋아요한 동영상 목록 데이터 (JSONB)';
+
+
 -- ============================================================================
 -- 완료!
 -- ============================================================================
 -- 다음 단계:
 -- 1. 위 SQL을 Supabase SQL Editor에 붙여넣고 실행
 -- 2. 4번의 암호화 키를 강력한 키로 변경 (필수!)
--- 3. 테이블 생성 확인: Supabase Dashboard > Table Editor > users, admin_settings
+-- 3. 테이블 생성 확인: Supabase Dashboard > Table Editor > users, admin_settings, liked_videos
 -- ============================================================================
