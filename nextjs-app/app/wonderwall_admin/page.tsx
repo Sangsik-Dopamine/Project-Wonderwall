@@ -70,20 +70,17 @@ export default function AdminDashboard() {
   const checkAuth = async () => {
     try {
       const response = await fetch('/api/admin/check-auth')
-      if (response.ok) {
-        const data = await response.json()
-        if (data.isAdmin) {
-          setAuthorized(true)
-          loadSettings()
-          loadUsers()
-        } else {
-          router.push('/')
-        }
+      const data = await response.json()
+
+      if (data.isAdmin) {
+        setAuthorized(true)
+        loadSettings()
+        loadUsers()
       } else {
-        router.push('/login')
+        router.push('/wonderwall_admin/login')
       }
     } catch {
-      router.push('/login')
+      router.push('/wonderwall_admin/login')
     }
   }
 
