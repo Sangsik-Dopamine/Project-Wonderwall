@@ -4,9 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 
-type Settings = {
-  model: string
-  apiKey: string
+type AgentSettings = {
   systemPrompt: string
   userPromptTemplate: string
 }
@@ -18,24 +16,49 @@ type User = {
   has_json: boolean
 }
 
+// 기본 프롬프트 - A에이전트 (구독채널 기반 키워드 확장)
+const DEFAULT_AGENT_A_SYSTEM = `너는 유튜브 구독 채널 데이터를 분석해서 사용자의 관심사를 파악하는 전문가야. 채널 제목을 보고 각 채널의 핵심 주제를 키워드로 추출해줘. 단, 총 키워드 개수는 반드시 300개 이하로 제한해줘.`
+
+const DEFAULT_AGENT_A_USER = `다음은 유튜브 채널 제목 리스트이다. 각 채널의 특징을 분석해서 핵심 키워드를 추출해줘. 다른 설명은 생략하고 오직 추출된 키워드들만 콤마(,)로 구분된 형식으로 나열해줘. 총 키워드 개수는 300개를 넘지 않도록 해줘.
+
+채널 리스트:
+{channelTitles}`
+
+// 기본 프롬프트 - B에이전트 (좋아요 동영상 기반 대화)
+const DEFAULT_AGENT_B_SYSTEM = `너는 사용자의 관심사에 관하여 대화를 나누어주는 친구같은 AI 에이전트야.
+
+## 사용자의 좋아요 표시한 동영상 목록
+{likedVideos}
+
+## 대화 진행 가이드라인
+
+1) 우선 사용자의 '좋아요 표시한 동영상 목록'을 읽어와서 어떤 영상에 대해 이야기하고 싶은지 물어봐줘. 예를 들면 "최근에 '주피디의 역사여행'에서 이 동영상에 좋아요를 눌렀네? 혹시 어떤점이 좋았는지 말해줄 수 있어?" 라는 icebreak을 먼저 해줘. 실제 사용자의 좋아요 목록에 있는 동영상 제목과 채널명을 사용해서 자연스럽게 말해줘.
+
+2) 그리고 상대방의 관심사와 생각을 끌어내는 대화를 진행해줘. 사용자가 좋아요한 다른 영상들에 대해서도 자연스럽게 화제를 넓혀가면서 대화해줘.
+
+## 대화 스타일
+- 친근하고 따뜻한 반말 사용
+- 공감적이고 호기심 어린 태도
+- 사용자의 이야기를 경청하고 적절한 질문하기
+- 대화 흐름을 자연스럽게 유지하기`
+
+const DEFAULT_AGENT_B_USER = `안녕하세요, 대화를 시작해주세요.`
+
 export default function AdminDashboard() {
   const router = useRouter()
-  const [activeTab, setActiveTab] = useState<'keywords' | 'wonderwall' | 'users'>('keywords')
+  const [activeTab, setActiveTab] = useState<'agent_a' | 'agent_b' | 'users'>('agent_a')
   const [loading, setLoading] = useState(true)
   const [authorized, setAuthorized] = useState(false)
+  const [saving, setSaving] = useState(false)
 
-  const [keywordSettings, setKeywordSettings] = useState<Settings>({
-    model: 'claude-sonnet-4-5',
-    apiKey: '',
-    systemPrompt: '',
-    userPromptTemplate: '',
+  const [agentASettings, setAgentASettings] = useState<AgentSettings>({
+    systemPrompt: DEFAULT_AGENT_A_SYSTEM,
+    userPromptTemplate: DEFAULT_AGENT_A_USER,
   })
 
-  const [wonderwallSettings, setWonderwallSettings] = useState<Settings>({
-    model: 'claude-sonnet-4-5',
-    apiKey: '',
-    systemPrompt: '',
-    userPromptTemplate: '',
+  const [agentBSettings, setAgentBSettings] = useState<AgentSettings>({
+    systemPrompt: DEFAULT_AGENT_B_SYSTEM,
+    userPromptTemplate: DEFAULT_AGENT_B_USER,
   })
 
   const [users, setUsers] = useState<User[]>([])
@@ -54,11 +77,9 @@ export default function AdminDashboard() {
           loadSettings()
           loadUsers()
         } else {
-          // 로그인은 됐지만 어드민이 아닌 경우
           router.push('/')
         }
       } else {
-        // 로그인 안 된 경우
         router.push('/login')
       }
     } catch {
@@ -71,11 +92,17 @@ export default function AdminDashboard() {
       const response = await fetch('/api/admin/settings')
       if (response.ok) {
         const data = await response.json()
-        if (data.keywords) {
-          setKeywordSettings(data.keywords)
+        if (data.agent_a) {
+          setAgentASettings({
+            systemPrompt: data.agent_a.systemPrompt || DEFAULT_AGENT_A_SYSTEM,
+            userPromptTemplate: data.agent_a.userPromptTemplate || DEFAULT_AGENT_A_USER,
+          })
         }
-        if (data.wonderwall) {
-          setWonderwallSettings(data.wonderwall)
+        if (data.agent_b) {
+          setAgentBSettings({
+            systemPrompt: data.agent_b.systemPrompt || DEFAULT_AGENT_B_SYSTEM,
+            userPromptTemplate: data.agent_b.userPromptTemplate || DEFAULT_AGENT_B_USER,
+          })
         }
       }
     } catch (error) {
@@ -97,8 +124,9 @@ export default function AdminDashboard() {
     }
   }
 
-  const saveSettings = async (type: 'keywords' | 'wonderwall') => {
-    const settings = type === 'keywords' ? keywordSettings : wonderwallSettings
+  const saveSettings = async (type: 'agent_a' | 'agent_b') => {
+    const settings = type === 'agent_a' ? agentASettings : agentBSettings
+    setSaving(true)
 
     try {
       const response = await fetch('/api/admin/settings', {
@@ -114,26 +142,24 @@ export default function AdminDashboard() {
       }
     } catch {
       alert('저장 중 오류 발생')
+    } finally {
+      setSaving(false)
     }
   }
 
-  const testAPI = async (type: 'keywords' | 'wonderwall') => {
-    try {
-      const response = await fetch('/api/admin/test-api', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type }),
-      })
-
-      const data = await response.json()
-
-      if (response.ok) {
-        alert(`API 테스트 성공!\n\n응답: ${data.result}`)
+  const resetToDefault = (type: 'agent_a' | 'agent_b') => {
+    if (confirm('기본 프롬프트로 초기화하시겠습니까?')) {
+      if (type === 'agent_a') {
+        setAgentASettings({
+          systemPrompt: DEFAULT_AGENT_A_SYSTEM,
+          userPromptTemplate: DEFAULT_AGENT_A_USER,
+        })
       } else {
-        alert(`API 테스트 실패: ${data.error}`)
+        setAgentBSettings({
+          systemPrompt: DEFAULT_AGENT_B_SYSTEM,
+          userPromptTemplate: DEFAULT_AGENT_B_USER,
+        })
       }
-    } catch {
-      alert('API 테스트 중 오류 발생')
     }
   }
 
@@ -160,49 +186,34 @@ export default function AdminDashboard() {
     }
   }
 
-  const renderSettingsTab = (type: 'keywords' | 'wonderwall') => {
-    const settings = type === 'keywords' ? keywordSettings : wonderwallSettings
-    const setSettings = type === 'keywords' ? setKeywordSettings : setWonderwallSettings
+  const renderAgentTab = (type: 'agent_a' | 'agent_b') => {
+    const settings = type === 'agent_a' ? agentASettings : agentBSettings
+    const setSettings = type === 'agent_a' ? setAgentASettings : setAgentBSettings
+    const agentName = type === 'agent_a' ? 'A에이전트' : 'B에이전트'
+    const description = type === 'agent_a'
+      ? '유튜브 구독채널 목록을 기반으로 키워드를 확장하는 에이전트'
+      : '유튜브 좋아요 동영상을 기반으로 대화하는 에이전트'
+    const variableHint = type === 'agent_a'
+      ? '사용 가능한 변수: {channelTitles}'
+      : '사용 가능한 변수: {likedVideos}'
 
     return (
       <div className="space-y-6">
-        <div>
-          <label className="block text-sm font-medium text-gray-300 mb-2">
-            LLM 모델
-          </label>
-          <select
-            value={settings.model}
-            onChange={(e) => setSettings({ ...settings, model: e.target.value })}
-            className="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white"
-          >
-            <option value="claude-sonnet-4-5">Claude Sonnet 4.5</option>
-            <option value="claude-opus-4">Claude Opus 4</option>
-            <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
-            <option value="gpt-4o">GPT-4o</option>
-          </select>
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-300 mb-2">
-            API 키
-          </label>
-          <input
-            type="password"
-            value={settings.apiKey}
-            onChange={(e) => setSettings({ ...settings, apiKey: e.target.value })}
-            className="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white"
-            placeholder="API 키를 입력하세요"
-          />
+        <div className="bg-gray-800 rounded-lg p-4 mb-6">
+          <h3 className="text-lg font-bold text-white mb-2">{agentName}</h3>
+          <p className="text-gray-400 text-sm">{description}</p>
         </div>
 
         <div>
           <label className="block text-sm font-medium text-gray-300 mb-2">
             System Prompt
           </label>
+          <p className="text-xs text-gray-500 mb-2">{variableHint}</p>
           <textarea
             value={settings.systemPrompt}
             onChange={(e) => setSettings({ ...settings, systemPrompt: e.target.value })}
-            className="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white h-32"
+            className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white font-mono text-sm"
+            style={{ minHeight: '300px' }}
             placeholder="System prompt를 입력하세요"
           />
         </div>
@@ -211,30 +222,29 @@ export default function AdminDashboard() {
           <label className="block text-sm font-medium text-gray-300 mb-2">
             User Prompt Template
           </label>
+          <p className="text-xs text-gray-500 mb-2">{variableHint}</p>
           <textarea
             value={settings.userPromptTemplate}
             onChange={(e) => setSettings({ ...settings, userPromptTemplate: e.target.value })}
-            className="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white h-32"
-            placeholder={
-              type === 'keywords'
-                ? 'User prompt 템플릿 ({channelTitles} 변수 사용 가능)'
-                : 'User prompt 템플릿 ({keywords} 변수 사용 가능)'
-            }
+            className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white font-mono text-sm"
+            style={{ minHeight: '150px' }}
+            placeholder="User prompt 템플릿을 입력하세요"
           />
         </div>
 
         <div className="flex gap-4">
           <button
             onClick={() => saveSettings(type)}
-            className="flex-1 py-2 bg-white text-black font-bold rounded-lg hover:bg-gray-200"
+            disabled={saving}
+            className="flex-1 py-3 bg-white text-black font-bold rounded-lg hover:bg-gray-200 disabled:opacity-50"
           >
-            저장
+            {saving ? '저장 중...' : '저장'}
           </button>
           <button
-            onClick={() => testAPI(type)}
-            className="flex-1 py-2 bg-gray-700 text-white font-bold rounded-lg hover:bg-gray-600"
+            onClick={() => resetToDefault(type)}
+            className="px-6 py-3 bg-gray-700 text-white font-bold rounded-lg hover:bg-gray-600"
           >
-            API 테스트
+            기본값으로 초기화
           </button>
         </div>
       </div>
@@ -301,7 +311,7 @@ export default function AdminDashboard() {
     <div className="min-h-screen bg-black text-white p-8">
       <div className="max-w-6xl mx-auto">
         <div className="flex justify-between items-center mb-8">
-          <h1 className="text-4xl font-bold">Wonderwall Admin Dashboard</h1>
+          <h1 className="text-4xl font-bold">에이전트 프롬프트 관리</h1>
           <Link
             href="/"
             className="px-4 py-2 text-sm bg-gray-800 text-gray-300 rounded-lg hover:bg-gray-700 transition-colors"
@@ -312,24 +322,24 @@ export default function AdminDashboard() {
 
         <div className="flex gap-4 mb-8">
           <button
-            onClick={() => setActiveTab('keywords')}
+            onClick={() => setActiveTab('agent_a')}
             className={`px-6 py-3 rounded-lg font-medium ${
-              activeTab === 'keywords'
+              activeTab === 'agent_a'
                 ? 'bg-white text-black'
                 : 'bg-gray-800 text-gray-400'
             }`}
           >
-            키워드 추출 설정
+            A에이전트 (구독채널 키워드)
           </button>
           <button
-            onClick={() => setActiveTab('wonderwall')}
+            onClick={() => setActiveTab('agent_b')}
             className={`px-6 py-3 rounded-lg font-medium ${
-              activeTab === 'wonderwall'
+              activeTab === 'agent_b'
                 ? 'bg-white text-black'
                 : 'bg-gray-800 text-gray-400'
             }`}
           >
-            Wonderwall 설정
+            B에이전트 (좋아요 대화)
           </button>
           <button
             onClick={() => setActiveTab('users')}
@@ -344,8 +354,8 @@ export default function AdminDashboard() {
         </div>
 
         <div className="bg-gray-900 rounded-lg p-8">
-          {activeTab === 'keywords' && renderSettingsTab('keywords')}
-          {activeTab === 'wonderwall' && renderSettingsTab('wonderwall')}
+          {activeTab === 'agent_a' && renderAgentTab('agent_a')}
+          {activeTab === 'agent_b' && renderAgentTab('agent_b')}
           {activeTab === 'users' && renderUsersTab()}
         </div>
       </div>
