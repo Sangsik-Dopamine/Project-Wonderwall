@@ -35,7 +35,6 @@ export default function WonderwallPage() {
     scrollToBottom()
   }, [messages])
 
-  // localStorage에서 좋아요 동영상 데이터 로드 및 초기 메시지
   useEffect(() => {
     const savedData = localStorage.getItem('likedVideos')
     if (savedData) {
@@ -43,7 +42,6 @@ export default function WonderwallPage() {
         const parsed = JSON.parse(savedData)
         setLikedVideos(parsed.videos || [])
 
-        // 동영상 목록을 텍스트로 변환 (프롬프트용)
         const videosText = (parsed.videos || [])
           .map((v: LikedVideo, i: number) => `${i + 1}. "${v.title}" (채널: ${v.channelTitle})`)
           .join('\n')
@@ -105,7 +103,7 @@ export default function WonderwallPage() {
                 assistantMessage += data.text
                 setMessages([{ role: 'assistant', content: assistantMessage }])
               }
-            } catch (e) { /* ignore */ }
+            } catch { /* ignore */ }
           }
         }
       }
@@ -163,7 +161,7 @@ export default function WonderwallPage() {
                 assistantMessage += data.text
                 setMessages([...newMessages, { role: 'assistant', content: assistantMessage }])
               }
-            } catch (e) { /* ignore */ }
+            } catch { /* ignore */ }
           }
         }
       }
@@ -190,45 +188,78 @@ export default function WonderwallPage() {
   }, [input])
 
   return (
-    <div className="flex h-screen bg-black">
-      {/* 좌측: 좋아요 동영상 목록 (30%) */}
-      <div className="w-[30%] border-r border-gray-800 flex flex-col">
-        <div className="flex-shrink-0 px-4 py-4 border-b border-gray-800">
+    <div className="flex h-screen" style={{ background: 'var(--background)' }}>
+      {/* Left panel: Liked videos (30%) */}
+      <div
+        className="w-[30%] flex flex-col"
+        style={{ borderRight: '1px solid var(--border)' }}
+      >
+        <div
+          className="flex-shrink-0 px-5 py-5"
+          style={{ borderBottom: '1px solid var(--border)' }}
+        >
           <button
             onClick={() => router.back()}
-            className="text-gray-400 hover:text-white text-sm transition-colors"
+            className="text-sm transition-colors duration-200"
+            style={{ color: 'var(--foreground-muted)' }}
+            onMouseEnter={e => (e.currentTarget.style.color = 'var(--foreground)')}
+            onMouseLeave={e => (e.currentTarget.style.color = 'var(--foreground-muted)')}
           >
-            &larr; 돌아가기
+            {'<-'} 돌아가기
           </button>
-          <h2 className="text-sm font-semibold text-white mt-2" style={{ fontFamily: 'Pretendard Variable, Pretendard, sans-serif' }}>
+          <h2
+            className="text-sm font-medium mt-3"
+            style={{ color: 'var(--foreground)' }}
+          >
             좋아요한 동영상
           </h2>
-          <p className="text-xs text-gray-500 mt-1">최근 1개월</p>
+          <p
+            className="text-xs mt-1"
+            style={{ color: 'var(--foreground-muted)' }}
+          >
+            최근 1개월
+          </p>
         </div>
 
         <div className="flex-1 overflow-y-auto">
           {likedVideos.length === 0 ? (
-            <div className="p-4 text-center text-sm text-gray-500">
-              좋아요한 동영상이 없습니다.<br />
+            <div
+              className="p-5 text-center text-sm"
+              style={{ color: 'var(--foreground-muted)' }}
+            >
+              좋아요한 동영상이 없습니다.
+              <br />
               먼저 데이터를 불러와주세요.
             </div>
           ) : (
-            <div className="divide-y divide-gray-800">
+            <div>
               {likedVideos.map((video, index) => (
-                <div key={index} className="p-3 hover:bg-gray-900 transition-colors">
+                <div
+                  key={index}
+                  className="p-3 transition-colors duration-200 cursor-default"
+                  style={{ borderBottom: '1px solid var(--border)' }}
+                  onMouseEnter={e => (e.currentTarget.style.background = 'var(--background-surface)')}
+                  onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                >
                   <div className="flex gap-3">
                     {video.thumbnail && (
                       <img
                         src={video.thumbnail}
                         alt={video.title}
-                        className="w-24 h-14 object-cover rounded flex-shrink-0"
+                        className="w-24 h-14 object-cover rounded-lg flex-shrink-0"
                       />
                     )}
                     <div className="min-w-0 flex-1">
-                      <p className="text-xs text-white font-medium line-clamp-2 leading-relaxed">
+                      <p
+                        className="text-xs font-medium leading-relaxed line-clamp-2"
+                        style={{ color: 'var(--foreground)' }}
+                      >
                         {video.title}
                       </p>
-                      <p className="text-xs text-gray-500 mt-1 truncate">
+                      <p
+                        className="text-xs mt-1 truncate"
+                        style={{ color: 'var(--foreground-muted)' }}
+                      >
                         {video.channelTitle}
                       </p>
                     </div>
@@ -240,31 +271,42 @@ export default function WonderwallPage() {
         </div>
       </div>
 
-      {/* 우측: 챗봇 인터페이스 (70%) */}
+      {/* Right panel: Chat interface (70%) */}
       <div className="w-[70%] flex flex-col">
-        {/* 챗봇 헤더 */}
-        <div className="flex-shrink-0 border-b border-gray-800 px-6 py-4">
-          <h1 className="text-lg font-semibold text-white" style={{ fontFamily: 'Pretendard Variable, Pretendard, sans-serif' }}>
+        {/* Chat header */}
+        <div
+          className="flex-shrink-0 px-8 py-5"
+          style={{ borderBottom: '1px solid var(--border)' }}
+        >
+          <h1
+            className="text-lg font-light tracking-wide"
+            style={{ color: 'var(--foreground)' }}
+          >
             Wonderwall
           </h1>
-          <p className="text-xs text-gray-500 mt-1">당신의 관심사에 대해 이야기해요</p>
+          <p
+            className="text-xs mt-1"
+            style={{ color: 'var(--foreground-muted)' }}
+          >
+            당신의 관심사에 대해 이야기해요
+          </p>
         </div>
 
-        {/* 메시지 영역 */}
-        <div className="flex-1 overflow-y-auto px-6 py-6">
-          <div className="space-y-6">
+        {/* Messages */}
+        <div className="flex-1 overflow-y-auto px-8 py-8">
+          <div className="space-y-5">
             {messages.map((message, index) => (
               <div
                 key={index}
                 className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
               >
                 <div
-                  className={`max-w-[80%] rounded-2xl px-4 py-3 ${
+                  className="max-w-[80%] rounded-2xl px-5 py-3.5"
+                  style={
                     message.role === 'user'
-                      ? 'bg-white text-black'
-                      : 'bg-gray-800 text-white'
-                  }`}
-                  style={{ fontFamily: 'Pretendard Variable, Pretendard, sans-serif' }}
+                      ? { background: 'var(--foreground)', color: 'var(--background)' }
+                      : { background: 'var(--background-surface)', color: 'var(--foreground)', border: '1px solid var(--border)' }
+                  }
                 >
                   <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.content}</p>
                 </div>
@@ -272,11 +314,14 @@ export default function WonderwallPage() {
             ))}
             {isLoading && messages.length > 0 && messages[messages.length - 1].role === 'user' && (
               <div className="flex justify-start">
-                <div className="bg-gray-800 text-white rounded-2xl px-4 py-3">
-                  <div className="flex space-x-1">
-                    <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
-                    <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
-                    <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+                <div
+                  className="rounded-2xl px-5 py-3.5"
+                  style={{ background: 'var(--background-surface)', border: '1px solid var(--border)' }}
+                >
+                  <div className="flex gap-1.5">
+                    <div className="w-1.5 h-1.5 rounded-full animate-bounce" style={{ background: 'var(--foreground-muted)', animationDelay: '0ms' }} />
+                    <div className="w-1.5 h-1.5 rounded-full animate-bounce" style={{ background: 'var(--foreground-muted)', animationDelay: '150ms' }} />
+                    <div className="w-1.5 h-1.5 rounded-full animate-bounce" style={{ background: 'var(--foreground-muted)', animationDelay: '300ms' }} />
                   </div>
                 </div>
               </div>
@@ -285,21 +330,30 @@ export default function WonderwallPage() {
           </div>
         </div>
 
-        {/* 입력 영역 */}
-        <div className="flex-shrink-0 border-t border-gray-800 px-6 py-4">
+        {/* Input area */}
+        <div
+          className="flex-shrink-0 px-8 py-5"
+          style={{ borderTop: '1px solid var(--border)' }}
+        >
           <form onSubmit={handleSubmit}>
-            <div className="flex items-end gap-3 bg-gray-900 rounded-2xl px-4 py-3">
+            <div
+              className="flex items-end gap-3 rounded-2xl px-5 py-3.5 transition-colors duration-200"
+              style={{
+                background: 'var(--background-surface)',
+                border: '1px solid var(--border)',
+              }}
+            >
               <textarea
                 ref={textareaRef}
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
                 placeholder="메시지를 입력하세요..."
-                className="flex-1 bg-transparent text-white placeholder-gray-500 resize-none focus:outline-none text-sm"
+                className="flex-1 bg-transparent resize-none focus:outline-none text-sm"
                 style={{
-                  fontFamily: 'Pretendard Variable, Pretendard, sans-serif',
+                  color: 'var(--foreground)',
                   minHeight: '24px',
-                  maxHeight: '120px'
+                  maxHeight: '120px',
                 }}
                 rows={1}
                 disabled={isLoading}
@@ -307,7 +361,11 @@ export default function WonderwallPage() {
               <button
                 type="submit"
                 disabled={!input.trim() || isLoading}
-                className="flex-shrink-0 w-8 h-8 flex items-center justify-center bg-white text-black rounded-full disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-200 transition-colors"
+                className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-full transition-all duration-200 disabled:opacity-30 disabled:cursor-not-allowed"
+                style={{
+                  background: 'var(--foreground)',
+                  color: 'var(--background)',
+                }}
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />

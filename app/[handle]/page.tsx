@@ -11,13 +11,10 @@ interface UserPageProps {
 export default async function UserPage({ params }: UserPageProps) {
   const { handle } = await params
 
-  // @ 제거 (URL에서 @park.sangsik로 오면 park.sangsik만 추출)
   const cleanHandle = handle.replace(/^@/, '')
 
-  // Admin Client 사용 (RLS 우회 - 프로필 페이지는 공개)
   const adminClient = createAdminClient()
 
-  // 사용자 정보 조회
   const { data: user, error } = await adminClient
     .from('users')
     .select('id, email, handle')
@@ -29,13 +26,27 @@ export default async function UserPage({ params }: UserPageProps) {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
-      <div className="container mx-auto px-4 py-12">
-        <div className="max-w-4xl mx-auto">
-          {/* 분석 버튼 영역 */}
-          <div className="bg-white rounded-2xl shadow-xl p-8">
-            <AnalyzeButton />
-          </div>
+    <div className="min-h-screen px-6 py-16" style={{ background: 'var(--background)' }}>
+      <div className="max-w-2xl mx-auto">
+        {/* Header */}
+        <div className="mb-10">
+          <p
+            className="text-[11px] tracking-[0.3em] uppercase mb-3"
+            style={{ color: 'var(--foreground-muted)' }}
+          >
+            Profile
+          </p>
+          <h1
+            className="text-3xl font-extralight tracking-tight"
+            style={{ color: 'var(--foreground)' }}
+          >
+            @{user.handle}
+          </h1>
+        </div>
+
+        {/* Content card */}
+        <div className="card-surface p-8 md:p-10">
+          <AnalyzeButton />
         </div>
       </div>
     </div>

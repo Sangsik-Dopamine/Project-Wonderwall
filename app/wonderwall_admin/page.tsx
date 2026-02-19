@@ -16,7 +16,6 @@ type User = {
   has_json: boolean
 }
 
-// 기본 프롬프트 - A에이전트 (구독채널 기반 키워드 확장)
 const DEFAULT_AGENT_A_SYSTEM = `너는 유튜브 구독 채널 데이터를 분석해서 사용자의 관심사를 파악하는 전문가야. 채널 제목을 보고 각 채널의 핵심 주제를 키워드로 추출해줘. 단, 총 키워드 개수는 반드시 300개 이하로 제한해줘.`
 
 const DEFAULT_AGENT_A_USER = `다음은 유튜브 채널 제목 리스트이다. 각 채널의 특징을 분석해서 핵심 키워드를 추출해줘. 다른 설명은 생략하고 오직 추출된 키워드들만 콤마(,)로 구분된 형식으로 나열해줘. 총 키워드 개수는 300개를 넘지 않도록 해줘.
@@ -24,7 +23,6 @@ const DEFAULT_AGENT_A_USER = `다음은 유튜브 채널 제목 리스트이다.
 채널 리스트:
 {channelTitles}`
 
-// 기본 프롬프트 - B에이전트 (좋아요 동영상 기반 대화)
 const DEFAULT_AGENT_B_SYSTEM = `너는 사용자의 관심사에 관하여 대화를 나누어주는 친구같은 AI 에이전트야.
 
 ## 사용자의 좋아요 표시한 동영상 목록
@@ -196,50 +194,73 @@ export default function AdminDashboard() {
 
     return (
       <div className="space-y-6">
-        <div className="bg-gray-800 rounded-lg p-4 mb-6">
-          <h3 className="text-lg font-bold text-white mb-2">{agentName}</h3>
-          <p className="text-gray-400 text-sm">{description}</p>
+        <div
+          className="rounded-xl p-5"
+          style={{
+            background: 'rgba(255,255,255,0.02)',
+            border: '1px solid var(--border)',
+          }}
+        >
+          <h3
+            className="text-base font-medium mb-1"
+            style={{ color: 'var(--foreground)' }}
+          >
+            {agentName}
+          </h3>
+          <p className="text-sm" style={{ color: 'var(--foreground-muted)' }}>
+            {description}
+          </p>
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-300 mb-2">
+          <label
+            className="block text-xs font-medium mb-2 tracking-wide"
+            style={{ color: 'var(--foreground-secondary)' }}
+          >
             System Prompt
           </label>
-          <p className="text-xs text-gray-500 mb-2">{variableHint}</p>
+          <p className="text-xs mb-2" style={{ color: 'var(--foreground-muted)' }}>
+            {variableHint}
+          </p>
           <textarea
             value={settings.systemPrompt}
             onChange={(e) => setSettings({ ...settings, systemPrompt: e.target.value })}
-            className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white font-mono text-sm"
+            className="input-dark font-mono text-xs leading-relaxed"
             style={{ minHeight: '300px' }}
             placeholder="System prompt를 입력하세요"
           />
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-300 mb-2">
+          <label
+            className="block text-xs font-medium mb-2 tracking-wide"
+            style={{ color: 'var(--foreground-secondary)' }}
+          >
             User Prompt Template
           </label>
-          <p className="text-xs text-gray-500 mb-2">{variableHint}</p>
+          <p className="text-xs mb-2" style={{ color: 'var(--foreground-muted)' }}>
+            {variableHint}
+          </p>
           <textarea
             value={settings.userPromptTemplate}
             onChange={(e) => setSettings({ ...settings, userPromptTemplate: e.target.value })}
-            className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white font-mono text-sm"
+            className="input-dark font-mono text-xs leading-relaxed"
             style={{ minHeight: '150px' }}
             placeholder="User prompt 템플릿을 입력하세요"
           />
         </div>
 
-        <div className="flex gap-4">
+        <div className="flex gap-3">
           <button
             onClick={() => saveSettings(type)}
             disabled={saving}
-            className="flex-1 py-3 bg-white text-black font-bold rounded-lg hover:bg-gray-200 disabled:opacity-50"
+            className="btn-primary flex-1"
           >
             {saving ? '저장 중...' : '저장'}
           </button>
           <button
             onClick={() => resetToDefault(type)}
-            className="px-6 py-3 bg-gray-700 text-white font-bold rounded-lg hover:bg-gray-600"
+            className="btn-secondary px-6"
           >
             기본값으로 초기화
           </button>
@@ -254,34 +275,43 @@ export default function AdminDashboard() {
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
-              <tr className="border-b border-gray-700">
-                <th className="text-left py-3 px-4 text-gray-300">User ID</th>
-                <th className="text-left py-3 px-4 text-gray-300">Email</th>
-                <th className="text-left py-3 px-4 text-gray-300">가입일시</th>
-                <th className="text-left py-3 px-4 text-gray-300">JSON 파일</th>
-                <th className="text-left py-3 px-4 text-gray-300">다운로드</th>
+              <tr style={{ borderBottom: '1px solid var(--border)' }}>
+                <th className="text-left py-3 px-4 text-xs font-medium tracking-wide" style={{ color: 'var(--foreground-secondary)' }}>User ID</th>
+                <th className="text-left py-3 px-4 text-xs font-medium tracking-wide" style={{ color: 'var(--foreground-secondary)' }}>Email</th>
+                <th className="text-left py-3 px-4 text-xs font-medium tracking-wide" style={{ color: 'var(--foreground-secondary)' }}>가입일시</th>
+                <th className="text-left py-3 px-4 text-xs font-medium tracking-wide" style={{ color: 'var(--foreground-secondary)' }}>JSON</th>
+                <th className="text-left py-3 px-4 text-xs font-medium tracking-wide" style={{ color: 'var(--foreground-secondary)' }}>다운로드</th>
               </tr>
             </thead>
             <tbody>
               {users.map((user) => (
-                <tr key={user.id} className="border-b border-gray-800">
-                  <td className="py-3 px-4 text-gray-400 text-sm">{user.id}</td>
-                  <td className="py-3 px-4 text-white">{user.email}</td>
-                  <td className="py-3 px-4 text-gray-400">
+                <tr
+                  key={user.id}
+                  className="transition-colors duration-150"
+                  style={{ borderBottom: '1px solid var(--border)' }}
+                  onMouseEnter={e => (e.currentTarget.style.background = 'var(--background-surface)')}
+                  onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                >
+                  <td className="py-3 px-4 text-xs" style={{ color: 'var(--foreground-muted)' }}>{user.id}</td>
+                  <td className="py-3 px-4 text-sm" style={{ color: 'var(--foreground)' }}>{user.email}</td>
+                  <td className="py-3 px-4 text-sm" style={{ color: 'var(--foreground-muted)' }}>
                     {new Date(user.created_at).toLocaleString('ko-KR')}
                   </td>
                   <td className="py-3 px-4">
                     {user.has_json ? (
-                      <span className="text-green-400">✓</span>
+                      <span style={{ color: '#4ade80' }}>Yes</span>
                     ) : (
-                      <span className="text-gray-600">-</span>
+                      <span style={{ color: 'var(--foreground-muted)' }}>-</span>
                     )}
                   </td>
                   <td className="py-3 px-4">
                     {user.has_json && (
                       <button
                         onClick={() => downloadJSON(user.id)}
-                        className="text-blue-400 hover:text-blue-300"
+                        className="text-sm transition-colors duration-200"
+                        style={{ color: 'var(--accent-warm)' }}
+                        onMouseEnter={e => (e.currentTarget.style.opacity = '0.7')}
+                        onMouseLeave={e => (e.currentTarget.style.opacity = '1')}
                       >
                         다운로드
                       </button>
@@ -298,59 +328,68 @@ export default function AdminDashboard() {
 
   if (loading || !authorized) {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
-        <div className="text-white">로딩 중...</div>
+      <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--background)' }}>
+        <div className="spinner" />
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-black text-white p-8">
-      <div className="max-w-6xl mx-auto">
-        <div className="flex justify-between items-center mb-8">
-          <h1 className="text-4xl font-bold">에이전트 프롬프트 관리</h1>
+    <div className="min-h-screen px-6 py-12 md:px-8" style={{ background: 'var(--background)' }}>
+      <div className="max-w-5xl mx-auto">
+        {/* Header */}
+        <div className="flex justify-between items-center mb-10">
+          <div>
+            <p
+              className="text-[11px] tracking-[0.3em] uppercase mb-2"
+              style={{ color: 'var(--foreground-muted)' }}
+            >
+              Admin
+            </p>
+            <h1
+              className="text-2xl font-extralight tracking-tight"
+              style={{ color: 'var(--foreground)' }}
+            >
+              에이전트 프롬프트 관리
+            </h1>
+          </div>
           <Link
             href="/"
-            className="px-4 py-2 text-sm bg-gray-800 text-gray-300 rounded-lg hover:bg-gray-700 transition-colors"
+            className="text-xs transition-colors duration-200"
+            style={{
+              color: 'var(--foreground-muted)',
+              borderBottom: '1px solid var(--border)',
+              paddingBottom: '2px',
+            }}
           >
             홈으로
           </Link>
         </div>
 
-        <div className="flex gap-4 mb-8">
-          <button
-            onClick={() => setActiveTab('agent_a')}
-            className={`px-6 py-3 rounded-lg font-medium ${
-              activeTab === 'agent_a'
-                ? 'bg-white text-black'
-                : 'bg-gray-800 text-gray-400'
-            }`}
-          >
-            A에이전트 (구독채널 키워드)
-          </button>
-          <button
-            onClick={() => setActiveTab('agent_b')}
-            className={`px-6 py-3 rounded-lg font-medium ${
-              activeTab === 'agent_b'
-                ? 'bg-white text-black'
-                : 'bg-gray-800 text-gray-400'
-            }`}
-          >
-            B에이전트 (좋아요 대화)
-          </button>
-          <button
-            onClick={() => setActiveTab('users')}
-            className={`px-6 py-3 rounded-lg font-medium ${
-              activeTab === 'users'
-                ? 'bg-white text-black'
-                : 'bg-gray-800 text-gray-400'
-            }`}
-          >
-            사용자 관리
-          </button>
+        {/* Tabs */}
+        <div className="flex gap-1 mb-8">
+          {[
+            { key: 'agent_a' as const, label: 'A에이전트' },
+            { key: 'agent_b' as const, label: 'B에이전트' },
+            { key: 'users' as const, label: '사용자 관리' },
+          ].map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
+              className="px-5 py-2.5 text-sm font-medium rounded-lg transition-all duration-200"
+              style={
+                activeTab === tab.key
+                  ? { background: 'var(--foreground)', color: 'var(--background)' }
+                  : { background: 'transparent', color: 'var(--foreground-muted)', border: '1px solid var(--border)' }
+              }
+            >
+              {tab.label}
+            </button>
+          ))}
         </div>
 
-        <div className="bg-gray-900 rounded-lg p-8">
+        {/* Content */}
+        <div className="card-surface p-8">
           {activeTab === 'agent_a' && renderAgentTab('agent_a')}
           {activeTab === 'agent_b' && renderAgentTab('agent_b')}
           {activeTab === 'users' && renderUsersTab()}

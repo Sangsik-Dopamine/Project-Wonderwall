@@ -37,44 +37,61 @@ export default function AdminLogin() {
   }
 
   return (
-    <div className="min-h-screen bg-black flex items-center justify-center p-4">
+    <div className="min-h-screen flex items-center justify-center px-6" style={{ background: 'var(--background)' }}>
       <div className="w-full max-w-md">
-        <div className="bg-gray-900 rounded-lg p-8">
-          <h1 className="text-2xl font-bold text-white text-center mb-8">
-            Admin Login
-          </h1>
+        <div className="card-surface p-8 md:p-10">
+          <div className="text-center mb-10">
+            <p
+              className="text-[11px] tracking-[0.3em] uppercase mb-4"
+              style={{ color: 'var(--foreground-muted)' }}
+            >
+              Admin
+            </p>
+            <h1
+              className="text-2xl font-extralight tracking-tight"
+              style={{ color: 'var(--foreground)' }}
+            >
+              로그인
+            </h1>
+          </div>
 
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form onSubmit={handleSubmit} className="space-y-5">
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
+              <label
+                className="block text-xs font-medium mb-2 tracking-wide"
+                style={{ color: 'var(--foreground-secondary)' }}
+              >
                 ID
               </label>
               <input
                 type="text"
                 value={id}
                 onChange={(e) => setId(e.target.value)}
-                className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-white"
+                className="input-dark"
                 placeholder="아이디 입력"
                 required
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
+              <label
+                className="block text-xs font-medium mb-2 tracking-wide"
+                style={{ color: 'var(--foreground-secondary)' }}
+              >
                 Password
               </label>
               <input
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-white"
+                className="input-dark"
                 placeholder="비밀번호 입력"
                 required
               />
             </div>
 
             {error && (
-              <div className="text-red-400 text-sm text-center">
+              <div className="text-sm text-center" style={{ color: '#f87171' }}>
                 {error}
               </div>
             )}
@@ -82,7 +99,7 @@ export default function AdminLogin() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-3 bg-white text-black font-bold rounded-lg hover:bg-gray-200 disabled:opacity-50 transition-colors"
+              className="btn-primary w-full mt-2"
             >
               {loading ? '로그인 중...' : '로그인'}
             </button>

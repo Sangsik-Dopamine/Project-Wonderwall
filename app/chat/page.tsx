@@ -18,7 +18,6 @@ export default function ChatPage() {
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
-  // 스크롤을 맨 아래로
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }
@@ -27,17 +26,14 @@ export default function ChatPage() {
     scrollToBottom()
   }, [messages])
 
-  // localStorage에서 에세이 가져오기 및 초기 메시지 전송
   useEffect(() => {
     const savedEssay = localStorage.getItem('wonderwallEssay')
     if (savedEssay) {
       setEssay(savedEssay)
     }
 
-    // 초기 인사 메시지 설정
     if (!isInitialized) {
       setIsInitialized(true)
-      // 초기 메시지를 API를 통해 받아오기
       initializeChat(savedEssay || '')
     }
   }, [])
@@ -81,15 +77,14 @@ export default function ChatPage() {
                 assistantMessage += data.text
                 setMessages([{ role: 'assistant', content: assistantMessage }])
               }
-            } catch (e) {
-              // JSON 파싱 실패 무시
+            } catch {
+              // ignore
             }
           }
         }
       }
     } catch (error) {
       console.error('Failed to initialize chat:', error)
-      // 폴백 메시지
       setMessages([{
         role: 'assistant',
         content: '너에 대해 알게 해줘서 고마워. 나의 역할은 너의 자아를 발견하는 여정을 함께할 동반자야. 여정이 끝날때 즈음이면, 우리는 서로를 더 잘 알게 될거고, 너와 비슷한 영혼을 가진 사람을 발견하게 될거야. 그렇게 우리의 세계가 확장되는거지. 어때? 나와 함께 이 여행을 시작해 볼래?'
@@ -106,7 +101,6 @@ export default function ChatPage() {
     const userMessage = input.trim()
     setInput('')
 
-    // 사용자 메시지 추가
     const newMessages: Message[] = [...messages, { role: 'user', content: userMessage }]
     setMessages(newMessages)
     setIsLoading(true)
@@ -148,8 +142,8 @@ export default function ChatPage() {
                 assistantMessage += data.text
                 setMessages([...newMessages, { role: 'assistant', content: assistantMessage }])
               }
-            } catch (e) {
-              // JSON 파싱 실패 무시
+            } catch {
+              // ignore
             }
           }
         }
@@ -169,7 +163,6 @@ export default function ChatPage() {
     }
   }
 
-  // 텍스트 영역 자동 높이 조절
   useEffect(() => {
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto'
@@ -178,38 +171,47 @@ export default function ChatPage() {
   }, [input])
 
   return (
-    <div className="flex flex-col h-screen bg-black">
-      {/* 헤더 */}
-      <div className="flex-shrink-0 border-b border-gray-800 px-4 py-4">
+    <div className="flex flex-col h-screen" style={{ background: 'var(--background)' }}>
+      {/* Header */}
+      <div
+        className="flex-shrink-0 px-6 py-5"
+        style={{ borderBottom: '1px solid var(--border)' }}
+      >
         <div className="max-w-3xl mx-auto flex items-center justify-between">
           <button
             onClick={() => router.back()}
-            className="text-gray-400 hover:text-white transition-colors"
+            className="text-sm transition-colors duration-200"
+            style={{ color: 'var(--foreground-muted)' }}
+            onMouseEnter={e => (e.currentTarget.style.color = 'var(--foreground)')}
+            onMouseLeave={e => (e.currentTarget.style.color = 'var(--foreground-muted)')}
           >
-            ← 돌아가기
+            {'<-'} 돌아가기
           </button>
-          <h1 className="text-lg font-semibold text-white" style={{ fontFamily: 'Pretendard Variable, Pretendard, sans-serif' }}>
+          <h1
+            className="text-base font-light tracking-wide"
+            style={{ color: 'var(--foreground)' }}
+          >
             나를 이해하는 에이전트
           </h1>
-          <div className="w-20"></div>
+          <div className="w-20" />
         </div>
       </div>
 
-      {/* 메시지 영역 */}
-      <div className="flex-1 overflow-y-auto px-4 py-6">
-        <div className="max-w-3xl mx-auto space-y-6">
+      {/* Messages */}
+      <div className="flex-1 overflow-y-auto px-6 py-8">
+        <div className="max-w-3xl mx-auto space-y-5">
           {messages.map((message, index) => (
             <div
               key={index}
               className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
             >
               <div
-                className={`max-w-[80%] rounded-2xl px-4 py-3 ${
+                className="max-w-[80%] rounded-2xl px-5 py-3.5"
+                style={
                   message.role === 'user'
-                    ? 'bg-white text-black'
-                    : 'bg-gray-800 text-white'
-                }`}
-                style={{ fontFamily: 'Pretendard Variable, Pretendard, sans-serif' }}
+                    ? { background: 'var(--foreground)', color: 'var(--background)' }
+                    : { background: 'var(--background-surface)', color: 'var(--foreground)', border: '1px solid var(--border)' }
+                }
               >
                 <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.content}</p>
               </div>
@@ -217,11 +219,14 @@ export default function ChatPage() {
           ))}
           {isLoading && messages.length > 0 && messages[messages.length - 1].role === 'user' && (
             <div className="flex justify-start">
-              <div className="bg-gray-800 text-white rounded-2xl px-4 py-3">
-                <div className="flex space-x-1">
-                  <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
-                  <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
-                  <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+              <div
+                className="rounded-2xl px-5 py-3.5"
+                style={{ background: 'var(--background-surface)', border: '1px solid var(--border)' }}
+              >
+                <div className="flex gap-1.5">
+                  <div className="w-1.5 h-1.5 rounded-full animate-bounce" style={{ background: 'var(--foreground-muted)', animationDelay: '0ms' }} />
+                  <div className="w-1.5 h-1.5 rounded-full animate-bounce" style={{ background: 'var(--foreground-muted)', animationDelay: '150ms' }} />
+                  <div className="w-1.5 h-1.5 rounded-full animate-bounce" style={{ background: 'var(--foreground-muted)', animationDelay: '300ms' }} />
                 </div>
               </div>
             </div>
@@ -230,21 +235,30 @@ export default function ChatPage() {
         </div>
       </div>
 
-      {/* 입력 영역 */}
-      <div className="flex-shrink-0 border-t border-gray-800 px-4 py-4">
+      {/* Input area */}
+      <div
+        className="flex-shrink-0 px-6 py-5"
+        style={{ borderTop: '1px solid var(--border)' }}
+      >
         <form onSubmit={handleSubmit} className="max-w-3xl mx-auto">
-          <div className="flex items-end gap-3 bg-gray-900 rounded-2xl px-4 py-3">
+          <div
+            className="flex items-end gap-3 rounded-2xl px-5 py-3.5"
+            style={{
+              background: 'var(--background-surface)',
+              border: '1px solid var(--border)',
+            }}
+          >
             <textarea
               ref={textareaRef}
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder="메시지를 입력하세요..."
-              className="flex-1 bg-transparent text-white placeholder-gray-500 resize-none focus:outline-none text-sm"
+              className="flex-1 bg-transparent resize-none focus:outline-none text-sm"
               style={{
-                fontFamily: 'Pretendard Variable, Pretendard, sans-serif',
+                color: 'var(--foreground)',
                 minHeight: '24px',
-                maxHeight: '120px'
+                maxHeight: '120px',
               }}
               rows={1}
               disabled={isLoading}
@@ -252,14 +266,21 @@ export default function ChatPage() {
             <button
               type="submit"
               disabled={!input.trim() || isLoading}
-              className="flex-shrink-0 w-8 h-8 flex items-center justify-center bg-white text-black rounded-full disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-200 transition-colors"
+              className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-full transition-all duration-200 disabled:opacity-30 disabled:cursor-not-allowed"
+              style={{
+                background: 'var(--foreground)',
+                color: 'var(--background)',
+              }}
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
               </svg>
             </button>
           </div>
-          <p className="text-xs text-gray-500 text-center mt-2">
+          <p
+            className="text-xs text-center mt-3"
+            style={{ color: 'var(--foreground-muted)' }}
+          >
             대화 내용은 서버에 저장되지 않으며, 학습에 사용되지 않습니다.
           </p>
         </form>
