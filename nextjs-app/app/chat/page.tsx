@@ -245,7 +245,7 @@ export default function ChatPage() {
   }, [input])
 
   return (
-    <div className="flex flex-col h-screen bg-[#131314] relative">
+    <div className="flex flex-col h-screen bg-[#131314] relative md:pt-14 pb-16 md:pb-0">
       {/* 사이드바 오버레이 */}
       {sidebarOpen && (
         <div
