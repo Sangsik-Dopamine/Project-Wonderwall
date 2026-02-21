@@ -190,7 +190,7 @@ export default function WonderwallPage() {
   }, [input])
 
   return (
-    <div className="flex h-screen bg-black">
+    <div className="flex h-screen bg-black md:pt-14 pb-16 md:pb-0">
       {/* 좌측: 좋아요 동영상 목록 (30%) */}
       <div className="w-[30%] border-r border-gray-800 flex flex-col">
         <div className="flex-shrink-0 px-4 py-4 border-b border-gray-800">

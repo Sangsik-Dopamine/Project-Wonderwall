@@ -29,7 +29,7 @@ export default async function UserPage({ params }: UserPageProps) {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 md:pt-14 pb-16 md:pb-0">
       <div className="container mx-auto px-4 py-12">
         <div className="max-w-4xl mx-auto">
           {/* 분석 버튼 영역 */}

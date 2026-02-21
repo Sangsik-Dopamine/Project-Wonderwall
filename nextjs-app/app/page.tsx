@@ -23,7 +23,7 @@ export default function LandingPage() {
   }, [])
 
   return (
-    <div className="bg-black text-white snap-y snap-mandatory h-screen overflow-y-scroll">
+    <div className="bg-black text-white snap-y snap-mandatory h-screen overflow-y-scroll md:pt-14 pb-16 md:pb-0">
       {/* Admin Link - 어드민만 보임 */}
       {isAdmin && (
         <Link
